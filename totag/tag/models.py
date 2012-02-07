@@ -16,6 +16,8 @@ class Venue(models.Model):
     city = models.CharField(max_length=255)
     #at = models.CharField()  # seems like an object identifier
 
+    def __unicode__(self):
+        return u"%s at %s" % (self.name, self.address)
 
 class Team(models.Model):
     name = models.CharField(max_length=50)
@@ -23,6 +25,8 @@ class Team(models.Model):
     venues = models.ManyToManyField(Venue, blank=True)
     points = models.IntegerField()
 
+    def __unicode__(self):
+        return u"%s and the %ss" % (self.leader, self.name)
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User)
@@ -41,7 +45,6 @@ class UserProfile(models.Model):
 
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
-        UserProfile.objects.create(user=instance    
-                                   )
+        UserProfile.objects.create(user=instance)
 
 post_save.connect(create_user_profile, sender=User)
