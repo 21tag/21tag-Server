@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
+import datetime
 
 
 class Venue(models.Model):
@@ -21,6 +22,8 @@ class Venue(models.Model):
 
 class Team(models.Model):
     name = models.CharField(max_length=50)
+    #motto = models.CharField(max_length=255)
+    #add team icon
     leader = models.ForeignKey(User)
     venues = models.ManyToManyField(Venue, blank=True)
     points = models.IntegerField()
@@ -42,6 +45,15 @@ class UserProfile(models.Model):
     currentVenueTime = models.DateTimeField(blank=True, null=True)
     currentVenueLastTime = models.DateTimeField(blank=True, null=True)
 
+    def checkin(self, poi):
+        if self.currentVenueID != poi.pk:
+            self.currentVenueID = poi.pk
+            self.currentVenueName = poi.name
+            self.currentVenueTime = datetime.datetime.now()
+        elif datetime.datetime.now() - self.currentVenueLastTime > datetime.timedelta(minutes=1):
+            self.points += 1
+        self.currentVenueLastTime = datetime.datetime.now()
+        #Start timeout counter?
 
 def create_user_profile(sender, instance, created, **kwargs):
     if created:

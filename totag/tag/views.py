@@ -2,8 +2,24 @@
 from django.http import HttpResponse
 import json
 from django.contrib.auth.models import User
-from models import Team
+from models import Team, Venue
 from django.views.decorators.csrf import csrf_exempt
+
+#need to test
+@csrf_exempt
+def checkin(request):
+    if request.method == "POST":
+        try:
+            print "user " + str(request.POST.get("user"))
+            print "poi " + str(request.POST.get("poi"))
+            user = User.objects.get(pk=request.POST["user"])
+            poi = Venue.objects.get(pk=request.POST["poi"])
+            user.checkin(poi)
+            return HttpResponse("checkedin")
+        except Exception, e:
+            print e
+    return HttpResponse("malformed request")
+
 
 @csrf_exempt
 def getTeam(request):
@@ -32,4 +48,31 @@ def getTeam(request):
         tdic["venues"] = venues
         teams.append(tdic)
     response["teams"] = teams
+    return HttpResponse(json.dumps(response), mimetype="application/json")
+
+@csrf_exempt
+def getPoiDetails(request):
+    if request.method == "POST":
+        print request.POST["poi"]
+        try:
+            venue = [Venue.objects.get(pk=request.POST["poi"])]
+        except Exception, e:
+            venue = None
+            print "error " + str(e)
+    else:
+        venue = Venue.objects.all()
+        print "nonPOST " + str(len(venue))
+    response = {}
+    venues = []
+    for v in venue:
+        tdic = {}
+        tdic["id"] = v.name
+        tdic["zip"] = v.zip
+        tdic["tag_playable"] = v.tag_playable
+        tdic["geolong"] = v.geolong
+        tdic["geolat"] = v.geolat
+        tdic["state"] = v.state
+        tdic["city"] = v.city
+        venues.append(tdic)
+    response["poi"] = venues
     return HttpResponse(json.dumps(response), mimetype="application/json")

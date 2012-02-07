@@ -15,7 +15,8 @@ urlpatterns = patterns('',
     # url(r'^$', 'totag.views.home', name='home'),
 #    url(r'^api/', include(api_1.urls)),
     url(r'^getteam/', 'tag.views.getTeam'),
-
+    url(r'^checkin/', 'tag.views.checkin'),
+    url(r'^getpoidetails/', 'tag.views.getPoiDetails'),
     # Uncomment the admin/doc line below to enable admin documentation:
     # url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
 
