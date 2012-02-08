@@ -76,3 +76,41 @@ def getPoiDetails(request):
         venues.append(tdic)
     response["poi"] = venues
     return HttpResponse(json.dumps(response), mimetype="application/json")
+
+@csrf_exempt
+def standings(request):
+    if request.method == "POST":
+        print request.POST["num"]
+        try:
+            num = request.POST["num"]
+        except Exception, e:
+            venue = None
+            print "error " + str(e)
+    else:
+        num = request.GET.get("num", 10)
+        print "nonPOST "
+    team = Team.objects.order_by('-points')[:num]
+    response = {}
+    teams = []
+    for t in team:
+        tpdic = {}  # {t: <team data except pts>, p: <points>}  Ugh!
+        tdic = {}   # { team data }
+        tdic["id"] = t.name
+        if t.leader != None:
+            tdic["leader"] = t.leader.pk
+        users = []
+        #Get all users on team
+        for user in User.objects.filter(team__name__exact=t.name):
+            users.append(user.pk)
+        tdic["users"] = users
+        venues = []
+        for venue in t.venues.all():
+            venues.append(venue.pk)
+        tdic["venues"] = venues
+
+        tpdic["t"] = tdic
+        tpdic["p"] = t.points
+
+        teams.append(tpdic)
+    response["teams"] = teams
+    return HttpResponse(json.dumps(response), mimetype="application/json")

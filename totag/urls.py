@@ -17,6 +17,7 @@ urlpatterns = patterns('',
     url(r'^getteam/', 'tag.views.getTeam'),
     url(r'^checkin/', 'tag.views.checkin'),
     url(r'^getpoidetails/', 'tag.views.getPoiDetails'),
+    url(r'^standings/', 'tag.views.standings'),
     # Uncomment the admin/doc line below to enable admin documentation:
     # url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
 

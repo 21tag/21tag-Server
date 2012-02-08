@@ -24,7 +24,7 @@ class Team(models.Model):
     name = models.CharField(max_length=50)
     #motto = models.CharField(max_length=255)
     #add team icon
-    leader = models.ForeignKey(User)
+    leader = models.ForeignKey(User, blank=True, null=True)
     venues = models.ManyToManyField(Venue, blank=True)
     points = models.IntegerField()
 
