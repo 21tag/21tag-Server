@@ -45,6 +45,16 @@ class UserProfile(models.Model):
     currentVenueTime = models.DateTimeField(blank=True, null=True)
     currentVenueLastTime = models.DateTimeField(blank=True, null=True)
 
+    def setFromFbResponse(self, resp):
+        self.gender = resp["gender"][:1]
+        self.fid = resp["id"]
+        self.fb_authcode = resp["access_token"]
+        self.save()
+
+    def setAuthCode(self, authcode):
+        self.fb_authcode = authcode
+        self.save()
+
     def checkin(self, poi):
         if self.currentVenueID != poi.pk:
             self.currentVenueID = poi.pk
@@ -57,6 +67,6 @@ class UserProfile(models.Model):
 
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
-        UserProfile.objects.create(user=instance)
+        UserProfile.objects.get_or_create(user=instance)
 
 post_save.connect(create_user_profile, sender=User)

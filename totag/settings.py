@@ -106,6 +106,7 @@ TEMPLATE_DIRS = (
     # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
     # Always use forward slashes, even on Windows.
     # Don't forget to use absolute paths, not relative paths.
+    '/Users/dbro/Documents/django/21tag/totag/templates',
 )
 
 INSTALLED_APPS = (
@@ -122,6 +123,9 @@ INSTALLED_APPS = (
     # Uncomment the next line to enable admin documentation:
     # 'django.contrib.admindocs',
 )
+
+AUTH_PROFILE_MODULE="tag.UserProfile"
+
 
 # A sample logging configuration. The only tangible logging
 # performed by this configuration is to send an email to
