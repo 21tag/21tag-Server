@@ -3,9 +3,13 @@ from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 import datetime
 
+class Campus(models.Model):
+    name = models.CharField(max_length=255)
+
 
 class Venue(models.Model):
     name = models.CharField(max_length=255)
+    campus = models.ForeignKey(Campus)
     address = models.CharField(max_length=255)
     crossstreet = models.CharField(max_length=255)  # in iOS code, not masumi's db dump
     zip = models.IntegerField(max_length=5)
@@ -20,20 +24,23 @@ class Venue(models.Model):
     def __unicode__(self):
         return u"%s at %s" % (self.name, self.address)
 
+
 class Team(models.Model):
     name = models.CharField(max_length=50)
+    #Integrate Campus functionality 
+    campus = models.ForeignKey(Campus, blank=True, null=True)
     #motto = models.CharField(max_length=255)
-    #add team icon
+    #avatar = models.FileField()
     leader = models.ForeignKey(User, blank=True, null=True)
     venues = models.ManyToManyField(Venue, blank=True)
-    points = models.IntegerField()
+    points = models.IntegerField(default=0)
 
     def __unicode__(self):
         return u"%s and the %ss" % (self.leader, self.name)
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User)
-
+    campus = models.ForeignKey(Campus, blank=True, null=True)
     gender = models.CharField(blank=True, max_length=1)  # m /f
     phone = models.IntegerField(blank=True, max_length=11, null=True)
     fid = models.IntegerField(blank=True, max_length=255, null=True)

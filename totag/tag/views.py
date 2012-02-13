@@ -235,3 +235,32 @@ def getteamsbyfbids(request):
     response = {}
     response["TeamData"] = teams
     return HttpResponse(json.dumps(response), mimetype="application/json")
+
+
+@csrf_exempt
+def createteam(request):
+    if not request.method == "POST":
+        return HttpResponse("nope")
+    try:
+        print request.POST
+        try:
+            newTeam = Team.objects.get(name=request.POST["team"])
+            return HttpResponse("Team with given name all ready exists")
+        except:
+            newTeam = Team.objects.create(name=request.POST["team"])
+        print newTeam
+        userprofile = UserProfile.objects.get(fid=request.POST["user"])
+        # Check that user is not listed as leader of original team
+        if userprofile.team.leader == userprofile.user:
+            userprofile.team.leader = None
+            userprofile.team.save()
+            print "leader status of old team updated!"
+        userprofile.team = newTeam
+        userprofile.save()
+        newTeam.leader = userprofile.user
+        newTeam.save()
+    except Exception, e:
+        print e
+        return HttpResponse("invalid request")
+
+    return HttpResponse("nope")
