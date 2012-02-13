@@ -14,7 +14,7 @@ urlpatterns = patterns('',
     # Examples:
     # url(r'^$', 'totag.views.home', name='home'),
 #    url(r'^api/', include(api_1.urls)),
-    url(r'^getteam', 'tag.views.getTeam'),
+    url(r'^getteam$', 'tag.views.getTeam'),
     url(r'^checkin', 'tag.views.checkin'),
     url(r'^getpoidetails', 'tag.views.getPoiDetails'),
     url(r'^standings', 'tag.views.standings'),

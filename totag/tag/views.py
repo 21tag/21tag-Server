@@ -206,16 +206,32 @@ def resetfbauth(request):
 
 @csrf_exempt
 def getteamsbyfbids(request):
-    if not request.method == "POST"
+    if not request.method == "POST":
         return HttpResponse("nope")
     try:
         fbids = request.POST["fbids"].split(",")
         teams = []
+        fByTeam = {}
         for id in fbids:
-            try:
-                teams.append(UserProfile.objects.get(fid=id).team)
+            try:  # is fb friend on a 21tag team?
+                team = (UserProfile.objects.get(fid=id).team)
+                teamdic = {}
+                teamdic["id"] = team.name
+                teamdic["nummem"] = len(team.userprofile_set.all())
+                # tally friends by team
+                if not team.name in fByTeam:
+                    fByTeam[team.name] = 1
+                else:
+                    fByTeam[team.name] += 1
+                teams.append(teamdic)
             except:
                 pass
-        return HttpResponse(teams)
+        print teams
     except:
         return HttpResponse("nope")
+    #Add friend tally to response dic
+    for team in teams:
+        team["numf"] = fByTeam[team["id"]]
+    response = {}
+    response["TeamData"] = teams
+    return HttpResponse(json.dumps(response), mimetype="application/json")
