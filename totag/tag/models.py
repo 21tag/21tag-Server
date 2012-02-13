@@ -63,6 +63,7 @@ class UserProfile(models.Model):
         elif datetime.datetime.now() - self.currentVenueLastTime > datetime.timedelta(minutes=1):
             self.points += 1
         self.currentVenueLastTime = datetime.datetime.now()
+        self.save()
         #Start timeout counter?
 
 def create_user_profile(sender, instance, created, **kwargs):

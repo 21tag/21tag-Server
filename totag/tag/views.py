@@ -209,14 +209,13 @@ def getteamsbyfbids(request):
     if not request.method == "POST"
         return HttpResponse("nope")
     try:
-        fbids = request.POST["fbids"]
+        fbids = request.POST["fbids"].split(",")
         teams = []
         for id in fbids:
             try:
-                user = UserProfile.objects.get(fid=id).team
-
+                teams.append(UserProfile.objects.get(fid=id).team)
             except:
                 pass
-            
+        return HttpResponse(teams)
     except:
         return HttpResponse("nope")
