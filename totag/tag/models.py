@@ -6,13 +6,15 @@ import datetime
 class Campus(models.Model):
     name = models.CharField(max_length=255)
 
+    def __unicode__(self):
+        return u"%s" % (self.name)
 
 class Venue(models.Model):
     name = models.CharField(max_length=255)
     campus = models.ForeignKey(Campus)
     address = models.CharField(max_length=255)
     crossstreet = models.CharField(max_length=255)  # in iOS code, not masumi's db dump
-    zip = models.IntegerField(max_length=5)
+    zip = models.IntegerField()
     tag_playable = models.BooleanField()
     tag_owner = models.ForeignKey(User)
     geolong = models.FloatField()

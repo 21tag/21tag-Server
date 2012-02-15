@@ -9,6 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 import facebook
 from models import UserProfile
+from geopy.distance import distance
 
 
 @login_required
@@ -263,4 +264,37 @@ def createteam(request):
         print e
         return HttpResponse("invalid request")
 
+    return HttpResponse("nope")
+
+#TODO test!
+@csrf_exempt
+def getpoisdetails(request):
+    if not request.method == "POST":
+        return HttpResponse("nope")
+    try:
+        venues = Venue.objects.all()
+        userloc = (request.POST["lat"], request.POST["lon"])
+        try:
+            if len(venues) > request.POST["num"]:
+                venues = venues[:request.POST["num"]]
+        except:
+            pass
+        pois = []
+        for poi in venues:
+            poiloc = (poi.geolat, poi.geolong)
+            if distance(userloc, poiloc) < 400:
+                thispoi  = {}
+                thispoi["name"] = poi.name
+                thispoi["zip"] = poi.zip
+                thispoi["tag_playable"] = poi.tag_playable
+                thispoi["geolong"] = poi.geolong
+                thispoi["geolat"] = poi.geolat
+                thispoi["address"] = poi.address
+                #Make sure to enforce no conflicts in team venue ownership
+                thispoi["tag_owner"] = poi.team_set.all()[0].name
+                pois.append(thispoi)
+    except Exception, e:
+        print e
+        return HttpResponse("invalid request")
+    print pois
     return HttpResponse("nope")

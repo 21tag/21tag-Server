@@ -23,6 +23,7 @@ urlpatterns = patterns('',
     url(r'^resetfbauth', 'tag.views.resetfbauth'),
     url(r'^getteamsbyfbids', 'tag.views.getteamsbyfbids'),
     url(r'^createteam', 'tag.views.createteam'),
+    url(r'^getpoisdetails', 'tag.views.getpoisdetails'),
 
     #FB auth test methods
     url(r'^fbtest/', 'tag.views.fbtest'),
