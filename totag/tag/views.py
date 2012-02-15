@@ -298,3 +298,34 @@ def getpoisdetails(request):
         return HttpResponse("invalid request")
     print pois
     return HttpResponse("nope")
+
+@csrf_exempt
+def deletefromteam(request):
+    if not request.method == "POST":
+        return HttpResponse("nope")
+    try:
+        profile = UserProfile.objects.get(fid=request.POST["user"])
+        print profile.team.name.lower()
+        if profile.team.name.lower() == request.POST["team"].lower():
+            profile.team = None
+            profile.save()
+            return HttpResponse("yeah")
+        else:
+            return HttpResponse("team does not exist")
+    except Exception, e:
+        print e
+        return HttpResponse("nope")
+
+@csrf_exempt
+def addtoteam(request):
+    if not request.method == "POST":
+        return HttpResponse("nope")
+    try:
+        team = Team.objects.get(name=request.POST["team"])
+        user = UserProfile.objects.get(fid=request.POST["user"])
+        user.team = team
+        user.save()
+        return HttpResponse("yeah")
+    except Exception, e:
+        print e
+        return HttpResponse("nope")
