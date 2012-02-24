@@ -162,10 +162,15 @@ def fblogin(request):
 def login(request):
     if not request.method == "POST":
         return HttpResponse("wrong ")
+    print "/login POST: " + str(request.POST)
     try:
         user = UserProfile.objects.get(fb_authcode=request.POST["fbauthcode"])
         return HttpResponse(str(user.fid) + " logged in.")
+        print "logged in"
     except:
+        #When running on 21tag.com use fbauthcode to query fb for account
+        #creation data
+        #User.objects.create_user(request.POST[""])
         return HttpResponse("nope")
 
 
@@ -217,16 +222,21 @@ def getteamsbyfbids(request):
             try:  # is fb friend on a 21tag team?
                 team = (UserProfile.objects.get(fid=id).team)
                 teamdic = {}
-                teamdic["id"] = team.name
+
+                teamdic["name"] = team.name
                 teamdic["nummem"] = len(team.userprofile_set.all())
+                #vestigal fields
+                teamdic["id"] = team.name
+                teamdic["_id"] = team.name
+
                 # tally friends by team
                 if not team.name in fByTeam:
                     fByTeam[team.name] = 1
                 else:
                     fByTeam[team.name] += 1
                 teams.append(teamdic)
-            except:
-                pass
+            except Exception, e:
+                print e
         print teams
     except:
         return HttpResponse("nope")
@@ -303,6 +313,7 @@ def getpoisdetails(request):
 def deletefromteam(request):
     if not request.method == "POST":
         return HttpResponse("nope")
+    print "/deletefromteam POST: " + str(request.POST)
     try:
         profile = UserProfile.objects.get(fid=request.POST["user"])
         print profile.team.name.lower()

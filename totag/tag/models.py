@@ -75,8 +75,20 @@ class UserProfile(models.Model):
         self.save()
         #Start timeout counter?
 
+    # If the User is created through the admin interface
+    # UserProfile is created via admin inline form. So 
+    # Assume that's the cause of any exception here
+    def save(self, *args, **kwargs):
+        try:
+            existing = UserProfile.objects.get(user=self.user)
+            self.id = existing.id
+        except UserProfile.DoesNotExist:
+            pass
+        return super(UserProfile, self).save(*args, **kwargs)
+
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
         UserProfile.objects.get_or_create(user=instance)
+
 
 post_save.connect(create_user_profile, sender=User)
