@@ -1,31 +1,21 @@
 from django.conf.urls.defaults import patterns, include, url
-from tag.api import TeamResource, VenueResource
+from tag.api import TeamResource, VenueResource, UserResource
 from tastypie.api import Api
-
 # Uncomment the next two lines to enable the admin:
 from django.contrib import admin
 admin.autodiscover()
 
-#api_1 = Api(api_name="v1")
-#api_1.register(TeamResource())
-#api_1.register(VenueResource())
+api_v1 = Api(api_name="v2")
+api_v1.register(TeamResource())
+api_v1.register(VenueResource())
+api_v1.register(UserResource())
 
 urlpatterns = patterns('',
     # Examples:
     # url(r'^$', 'totag.views.home', name='home'),
 #    url(r'^api/', include(api_1.urls)),
-    url(r'^getteam$', 'tag.views.getTeam'),
-    url(r'^checkin', 'tag.views.checkin'),
-    url(r'^getpoidetails', 'tag.views.getPoiDetails'),
-    url(r'^standings', 'tag.views.standings'),
-    url(r'^login', 'tag.views.login'),
-    url(r'^adduser', 'tag.views.adduser'),
-    url(r'^resetfbauth', 'tag.views.resetfbauth'),
-    url(r'^getteamsbyfbids', 'tag.views.getteamsbyfbids'),
-    url(r'^createteam', 'tag.views.createteam'),
-    url(r'^getpoisdetails', 'tag.views.getpoisdetails'),
-    url(r'^deletefromteam', 'tag.views.deletefromteam'),
-    url(r'^addtoteam', 'tag.views.addtoteam'),
+    #API V2 endpoints
+    url(r'^api/', include(api_v1.urls)),
 
     #FB auth test methods
     url(r'^fbtest/', 'tag.views.fbtest'),
