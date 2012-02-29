@@ -44,7 +44,11 @@ class TeamResource(ModelResource):
         for p in players:
             p_res = {}
             p_res['id'] = p.pk
+            p_res['points'] = p.points
             try:
+                user = User.objects.get(pk=p.pk)
+                p_res['first_name'] = user.first_name
+                p_res['last_name'] = user.last_name
                 p_res['team'] = p.team.pk
                 p_res['teamname'] = p.team.name
                 p_res['currentVenueLastTime'] = p.currentVenueLastPing
@@ -56,6 +60,7 @@ class TeamResource(ModelResource):
                 p_res['currentVenueLastTime'] = ""
                 p_res['currentVenueName'] = ""
                 p_res['fid'] = ""
+
             #to append user resource_uris
             #p_res = ur.get_resource_uri(p)
             # to append usernames instead

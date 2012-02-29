@@ -58,7 +58,7 @@ class UserProfile(models.Model):
     fid = models.IntegerField(blank=True, max_length=255, null=True)
     fb_authcode = models.CharField(blank=True, max_length=255)
     team = models.ForeignKey(Team, blank=True, null=True)
-    points = models.IntegerField(blank=True, null=True)
+    points = models.IntegerField(default=0, blank=True, null=True)
     currentVenue = models.ForeignKey(Venue, blank=True, null=True)
     currentVenueLastPing = models.DateTimeField(blank=True, null=True)
 
@@ -100,8 +100,8 @@ class UserProfile(models.Model):
                     #Look into collision issues here
                     #I think there's a more proper way to increment variables
                     #When collisions are possible
-                    teamScores = self.team.venuescore_set.filter(venue=checkin).order_by('score')
-                    maxScore, maxTeam = 0, None
+                    #teamScores = self.team.venuescore_set.filter(venue=checkin).order_by('score')
+                    #maxScore, maxTeam = 0, None
 
                 if elapsedTime > datetime.timedelta(seconds=55):
                     self.currentVenueLastPing = datetime.datetime.now()

@@ -281,14 +281,16 @@ def createteam(request):
 #TODO test!
 @csrf_exempt
 def getpoisdetails(request):
-    if not request.method == "POST":
+    if request.method == "POST":
         return HttpResponse("nope")
     try:
+        print request.GET["lat"]
+        print request.GET["lon"]
         venues = Venue.objects.all()
-        userloc = (request.POST["lat"], request.POST["lon"])
+        userloc = (request.GET["lat"], request.GET["lon"])
         try:
-            if len(venues) > request.POST["num"]:
-                venues = venues[:request.POST["num"]]
+            if len(venues) > request.GET["num"]:
+                venues = venues[:request.GET["num"]]
         except:
             pass
         pois = []
@@ -296,12 +298,16 @@ def getpoisdetails(request):
             poiloc = (poi.geolat, poi.geolong)
             if distance(userloc, poiloc) < 400:
                 thispoi  = {}
+                thispoi["id"] = poi.id
                 thispoi["name"] = poi.name
                 thispoi["zip"] = poi.zip
                 thispoi["tag_playable"] = poi.tag_playable
                 thispoi["geolong"] = poi.geolong
                 thispoi["geolat"] = poi.geolat
                 thispoi["address"] = poi.address
+                thispoi["crossstreet"] = poi.crossstreet
+                thispoi["city"] = poi.city
+                thispoi["state"] = poi.state
                 #Make sure to enforce no conflicts in team venue ownership
                 thispoi["tag_owner"] = poi.team_set.all()[0].name
                 pois.append(thispoi)
@@ -309,7 +315,7 @@ def getpoisdetails(request):
         print e
         return HttpResponse("invalid request")
     print pois
-    return HttpResponse("nope")
+    return HttpResponse(json.dumps(pois), mimetype="application/json")
 
 @csrf_exempt
 def deletefromteam(request):
