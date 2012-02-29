@@ -9,7 +9,8 @@ from tastypie.constants import ALL
 from tastypie.serializers import Serializer
 from tastypie.exceptions import BadRequest
 from django.db import IntegrityError
-
+from django.conf.urls.defaults import url
+from datetime import datetime
 
 class TeamResource(ModelResource):
     class Meta:
@@ -34,39 +35,69 @@ class TeamResource(ModelResource):
         bundle.data['members'] = plist
         return bundle
 
-# Not needed
-#class UserProfileResource(ModelResource):
-#    class Meta:
-#        queryset = UserProfile.objects.all()
-#        resource_name = 'userprofile'
-#        include_resource_uri = False
-#        include_absolute_url = False
+
+class UserProfileResource(ModelResource):
+    class Meta:
+        queryset = UserProfile.objects.all()
+        resource_name = 'userprofile'
+        include_resource_uri = False
+        include_absolute_url = False
+
 
 class UserResource(ModelResource):
-    #profile = fields.OneToOneField(UserProfileResource, 'get_profile', full=True)
+    profile = fields.ToOneField(UserProfileResource, 'get_profile', full=True)
     class Meta:
         queryset = User.objects.all()
         resource_name = 'user'
-        fields = ['first_name', 'last_name']
-        list_allowed_methods = ['get', 'post']
+        fields = ['id', 'first_name', 'last_name']
+        list_allowed_methods = ['get', 'post', 'patch']
+        always_return_data = True
         # FOR DEV ONLY
         #authentication = Authentication()
         authorization = Authorization()
         serializer = Serializer()
 
+ #   def override_urls(self):
+ #       return [
+ #           url(r"^(?P<resource_name>%s)/(?P<fid/>[\w\d_.-]+)/$" % self._meta.resource_name, self.wrap_view('dispatch_detail'), name="api_dispatch_detail"),
+ #       ]
+    def hydrate(self, bundle):
+        #if 'poi' in bundle.data:
+        #    print "POI TIME"
+        #   bundle.data.pop('poi')
+        print bundle.obj
+        #profile = UserProfile.objects.get(pk=bundle.obj.pk)
+        try:
+            venue = Venue.objects.get(pk=poi)
+            #profile.currentVenueName = venue.name
+            #profile.currentVenueLastTime = datetime.datetime.now()
+        except:
+            raise BadRequest
+            venue = None
+        #if profile.currentVenueId == poi:
+        #    profile.points += 1
+        print "hydrated"
+        return bundle
+
     def dehydrate(self, bundle):
         profile = UserProfile.objects.get(pk=bundle.obj.pk)  # check that user and profile pks are safe to assume equal
-        bundle.data['team'] = profile.team.pk
-        bundle.data['teamname'] = profile.team.name
+        try:
+            bundle.data['team'] = profile.team.pk
+            bundle.data['teamname'] = profile.team.name
+        except:
+            bundle.data['teamname'] = ""
+            bundle.data['team'] = ""
+
         bundle.data['currentVenueTime'] = profile.currentVenueTime
         bundle.data['currentVenueLastTime'] = profile.currentVenueLastTime
         bundle.data['currentVenueName'] = profile.currentVenueName
+        bundle.data.pop('profile')
         return bundle
-
 
     def obj_create(self, bundle, request=None, **kwargs):
         # set facebook id as username, fbauthcode as pw
         # improve this security later
+        print "obj create"
         try:
             fname, lname, username, password, email = bundle.data['firstname'], bundle.data['lastname'], bundle.data['fid'], bundle.data['fbauthcode'], bundle.data['email']
         except:
