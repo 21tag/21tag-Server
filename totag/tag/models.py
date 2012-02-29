@@ -39,6 +39,7 @@ class Team(models.Model):
     leader = models.ForeignKey(User, blank=True, null=True)
     venues = models.ManyToManyField(Venue, blank=True)
     points = models.IntegerField(default=0)
+    #remove points and venues
 
     def __unicode__(self):
         return u"%s and the %ss" % (self.leader, self.name)
@@ -91,12 +92,17 @@ class UserProfile(models.Model):
                 if elapsedTime > datetime.timedelta(seconds=55) and elapsedTime < datetime.timedelta(seconds=65):
                     print "points awarded"
                     self.points += 1
+                    self.team.points += 1
                     venuescore, created = VenueScore.objects.get_or_create(venue=self.currentVenue, team=self.team)
                     venuescore.score += 1
                     venuescore.save()
+                    #TODO: remove team score, have team dehydrate method tally score by venuescore objs
                     #Look into collision issues here
                     #I think there's a more proper way to increment variables
                     #When collisions are possible
+                    teamScores = self.team.venuescore_set.filter(venue=checkin).order_by('score')
+                    maxScore, maxTeam = 0, None
+
                 if elapsedTime > datetime.timedelta(seconds=55):
                     self.currentVenueLastPing = datetime.datetime.now()
             self.save()

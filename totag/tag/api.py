@@ -12,7 +12,16 @@ from django.db import IntegrityError
 from django.conf.urls.defaults import url
 from datetime import datetime
 
+
+class VenueResource(ModelResource):
+    class Meta:
+        queryset = Venue.objects.all()
+        resource_name = 'poi'
+
+
 class TeamResource(ModelResource):
+    venues = fields.ToManyField(VenueResource, 'venues', related_name='team', full=True)
+    #authors = fields.ToManyField('path.to.api.resources.AuthorResource', 'author_set', related_name='entry')
     class Meta:
         queryset = Team.objects.all()
         ordering = ['points']
@@ -27,13 +36,28 @@ class TeamResource(ModelResource):
 
         return bundle
 
+
     def dehydrate(self, bundle):
         players = UserProfile.objects.filter(team__name__exact=bundle.obj.name)
-        ur = UserResource()
-
+        #ur = UserResource()
         plist = []
         for p in players:
-            p_res = ur.get_resource_uri(p)
+            p_res = {}
+            p_res['id'] = p.pk
+            try:
+                p_res['team'] = p.team.pk
+                p_res['teamname'] = p.team.name
+                p_res['currentVenueLastTime'] = p.currentVenueLastPing
+                p_res['currentVenueName'] = p.currentVenue.name
+                p_res['fid'] = p.fid
+            except:
+                p_res['teamname'] = ""
+                p_res['team'] = ""
+                p_res['currentVenueLastTime'] = ""
+                p_res['currentVenueName'] = ""
+                p_res['fid'] = ""
+            #to append user resource_uris
+            #p_res = ur.get_resource_uri(p)
             # to append usernames instead
             #p_res = p.user.username
             plist.append(p_res)
@@ -67,14 +91,31 @@ class UserResource(ModelResource):
  #           url(r"^(?P<resource_name>%s)/(?P<fid/>[\w\d_.-]+)/$" % self._meta.resource_name, self.wrap_view('dispatch_detail'), name="api_dispatch_detail"),
  #       ]
     def hydrate(self, bundle):
-        #checkin call
         print "hydrate"
+        #checkin call
         if 'poi' in bundle.data:
             poi = bundle.data['poi']
             bundle.data.pop('poi')
             print bundle.data
             profile = UserProfile.objects.get(pk=bundle.obj.pk)
             profile.checkin(poi)
+        #team change call
+        if 'team_id' in bundle.data:
+            team_id = bundle.data['team_id']
+            bundle.data.pop('team_id')
+            profile = UserProfile.objects.get(pk=bundle.obj.pk)
+            if team_id == 0:
+                team = None
+            else:
+                team = Team.objects.get(pk=team_id)
+            profile.team = team
+            profile.save()
+        if 'fbauthcode' in bundle.data:
+            fbauthcode = bundle.data['fbauthcode']
+            bundle.data.pop('fbauthcode')
+            profile = UserProfile.objects.get(pk=bundle.obj.pk)
+            profile.fbauthcode = fbauthcode
+            profile.save()
 
         return bundle
 
@@ -124,9 +165,3 @@ class UserResource(ModelResource):
             print e
             raise BadRequest('That username already exists')
         return bundle
-
-
-class VenueResource(ModelResource):
-    class Meta:
-        queryset = Venue.objects.all()
-        resource_name = 'poi'
