@@ -17,10 +17,15 @@ class TeamResource(ModelResource):
         queryset = Team.objects.all()
         ordering = ['points']
         resource_name = 'team'
-        list_allowed_methods = ['get', 'post']
+        list_allowed_methods = ['get', 'post', 'patch']
+        always_return_data = True
         # FOR DEV ONLY
         #authentication = Authentication()
         authorization = Authorization()
+
+    def hydrate(self, bundle):
+
+        return bundle
 
     def dehydrate(self, bundle):
         players = UserProfile.objects.filter(team__name__exact=bundle.obj.name)
@@ -45,7 +50,7 @@ class UserProfileResource(ModelResource):
 
 
 class UserResource(ModelResource):
-    profile = fields.ToOneField(UserProfileResource, 'get_profile', full=True)
+    #profile = fields.ToOneField(UserProfileResource, 'get_profile', full=True)
     class Meta:
         queryset = User.objects.all()
         resource_name = 'user'
@@ -62,36 +67,36 @@ class UserResource(ModelResource):
  #           url(r"^(?P<resource_name>%s)/(?P<fid/>[\w\d_.-]+)/$" % self._meta.resource_name, self.wrap_view('dispatch_detail'), name="api_dispatch_detail"),
  #       ]
     def hydrate(self, bundle):
-        #if 'poi' in bundle.data:
-        #    print "POI TIME"
-        #   bundle.data.pop('poi')
-        print bundle.obj
-        #profile = UserProfile.objects.get(pk=bundle.obj.pk)
-        try:
-            venue = Venue.objects.get(pk=poi)
-            #profile.currentVenueName = venue.name
-            #profile.currentVenueLastTime = datetime.datetime.now()
-        except:
-            raise BadRequest
-            venue = None
-        #if profile.currentVenueId == poi:
-        #    profile.points += 1
-        print "hydrated"
+        #checkin call
+        print "hydrate"
+        if 'poi' in bundle.data:
+            poi = bundle.data['poi']
+            bundle.data.pop('poi')
+            print bundle.data
+            profile = UserProfile.objects.get(pk=bundle.obj.pk)
+            profile.checkin(poi)
+
         return bundle
 
+    # Prepare model data for client consumption
     def dehydrate(self, bundle):
         profile = UserProfile.objects.get(pk=bundle.obj.pk)  # check that user and profile pks are safe to assume equal
         try:
             bundle.data['team'] = profile.team.pk
             bundle.data['teamname'] = profile.team.name
+            bundle.data['currentVenueLastTime'] = profile.currentVenueLastPing
+            bundle.data['currentVenueName'] = profile.currentVenue.name
+            bundle.data['fid'] = profile.fid
         except:
             bundle.data['teamname'] = ""
             bundle.data['team'] = ""
+            bundle.data['currentVenueLastTime'] = ""
+            bundle.data['currentVenueName'] = ""
+            bundle.data['fid'] = ""
 
-        bundle.data['currentVenueTime'] = profile.currentVenueTime
-        bundle.data['currentVenueLastTime'] = profile.currentVenueLastTime
-        bundle.data['currentVenueName'] = profile.currentVenueName
-        bundle.data.pop('profile')
+        #Remove User Profile field
+        #bundle.data.pop('profile')
+        print "** Dehydrate: " + str(bundle.data)
         return bundle
 
     def obj_create(self, bundle, request=None, **kwargs):
@@ -99,7 +104,11 @@ class UserResource(ModelResource):
         # improve this security later
         print "obj create"
         try:
+            print bundle.data
             fname, lname, username, password, email = bundle.data['firstname'], bundle.data['lastname'], bundle.data['fid'], bundle.data['fbauthcode'], bundle.data['email']
+            #Else these can be passed to dehydrate
+            bundle.data.pop('firstname')
+            bundle.data.pop('lastname')
         except:
             raise BadRequest('Incomplete user data')
         try:
@@ -119,5 +128,5 @@ class UserResource(ModelResource):
 
 class VenueResource(ModelResource):
     class Meta:
-        queryset = Team.objects.all()
+        queryset = Venue.objects.all()
         resource_name = 'poi'

@@ -220,31 +220,33 @@ def getteamsbyfbids(request):
         fByTeam = {}
         for id in fbids:
             try:  # is fb friend on a 21tag team?
+                print id
                 team = (UserProfile.objects.get(fid=id).team)
                 teamdic = {}
 
                 teamdic["name"] = team.name
                 teamdic["nummem"] = len(team.userprofile_set.all())
                 #vestigal fields
-                teamdic["id"] = team.name
-                teamdic["_id"] = team.name
+                teamdic["id"] = team.pk
+                teamdic["name"] = team.name
 
                 # tally friends by team
-                if not team.name in fByTeam:
-                    fByTeam[team.name] = 1
+                if not team.id in fByTeam:
+                    fByTeam[team.id] = 1
                 else:
-                    fByTeam[team.name] += 1
+                    fByTeam[team.id] += 1
                 teams.append(teamdic)
             except Exception, e:
                 print e
-        print teams
-    except:
+    except Exception, e:
+        print e
         return HttpResponse("nope")
     #Add friend tally to response dic
     for team in teams:
         team["numf"] = fByTeam[team["id"]]
     response = {}
     response["TeamData"] = teams
+    print response
     return HttpResponse(json.dumps(response), mimetype="application/json")
 
 

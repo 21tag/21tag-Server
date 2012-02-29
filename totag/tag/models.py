@@ -3,11 +3,14 @@ from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 import datetime
 
+from tastypie.exceptions import BadRequest
+
 class Campus(models.Model):
     name = models.CharField(max_length=255)
 
     def __unicode__(self):
         return u"%s" % (self.name)
+
 
 class Venue(models.Model):
     name = models.CharField(max_length=255)
@@ -31,7 +34,7 @@ class Team(models.Model):
     name = models.CharField(max_length=50)
     #Integrate Campus functionality 
     campus = models.ForeignKey(Campus, blank=True, null=True)
-    #motto = models.CharField(max_length=255)
+    motto = models.CharField(max_length=255)
     #avatar = models.FileField()
     leader = models.ForeignKey(User, blank=True, null=True)
     venues = models.ManyToManyField(Venue, blank=True)
@@ -39,6 +42,12 @@ class Team(models.Model):
 
     def __unicode__(self):
         return u"%s and the %ss" % (self.leader, self.name)
+
+
+class VenueScore(models.Model):
+    score = models.IntegerField(default=0)
+    team = models.ForeignKey(Team, blank=True, null=True)
+    venue = models.ForeignKey(Venue, blank=True, null=True)
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User)
@@ -49,10 +58,8 @@ class UserProfile(models.Model):
     fb_authcode = models.CharField(blank=True, max_length=255)
     team = models.ForeignKey(Team, blank=True, null=True)
     points = models.IntegerField(blank=True, null=True)
-    currentVenueId = models.CharField(blank=True, max_length=255)
-    currentVenueName = models.CharField(blank=True, max_length=255)
-    currentVenueTime = models.DateTimeField(blank=True, null=True)
-    currentVenueLastTime = models.DateTimeField(blank=True, null=True)
+    currentVenue = models.ForeignKey(Venue, blank=True, null=True)
+    currentVenueLastPing = models.DateTimeField(blank=True, null=True)
 
     def setFromFbResponse(self, resp):
         self.gender = resp["gender"][:1]
@@ -65,14 +72,37 @@ class UserProfile(models.Model):
         self.save()
 
     def checkin(self, poi):
-        if self.currentVenueID != poi.pk:
-            self.currentVenueID = poi.pk
-            self.currentVenueName = poi.name
-            self.currentVenueTime = datetime.datetime.now()
-        elif datetime.datetime.now() - self.currentVenueLastTime > datetime.timedelta(minutes=1):
-            self.points += 1
-        self.currentVenueLastTime = datetime.datetime.now()
-        self.save()
+        #If first checkin, self.CurrentVenue will be null
+        if self.currentVenue == None:
+            print "first checkin"
+            self.currentVenue = Venue.objects.get(pk=poi)
+            self.currentVenueLastPing = datetime.datetime.now()
+            self.save()
+            return
+        try:
+            print "checkin"
+            checkin = Venue.objects.get(pk=poi)
+            if self.currentVenue.pk != checkin.pk:
+                self.currentVenue = checkin
+            else:
+                elapsedTime = datetime.datetime.now() - self.currentVenueLastPing
+                print str(elapsedTime) + " since last checkin at this poi"
+                #If it's been between 55 and 65 s since last checkin, points
+                if elapsedTime > datetime.timedelta(seconds=55) and elapsedTime < datetime.timedelta(seconds=65):
+                    print "points awarded"
+                    self.points += 1
+                    venuescore, created = VenueScore.objects.get_or_create(venue=self.currentVenue, team=self.team)
+                    venuescore.score += 1
+                    venuescore.save()
+                    #Look into collision issues here
+                    #I think there's a more proper way to increment variables
+                    #When collisions are possible
+                if elapsedTime > datetime.timedelta(seconds=55):
+                    self.currentVenueLastPing = datetime.datetime.now()
+            self.save()
+        except Exception, e:
+            print e
+            raise BadRequest
         #Start timeout counter?
 
     # If the User is created through the admin interface
