@@ -14,10 +14,24 @@ from datetime import datetime
 
 
 class VenueResource(ModelResource):
+    #tag_owner = fields.ForeignKey(TeamResource, 'tag_owner', related_name="venue", full=True)
     class Meta:
         queryset = Venue.objects.all()
         resource_name = 'poi'
 
+    def dehydrate(self, bundle):
+        venue = Venue.objects.get(pk=bundle.obj.pk)  # check that user and profile pks are safe to assume equal
+        try:
+            bundle.data['tag_owner'] = venue.tag_owner.pk
+
+        except:
+            bundle.data['teamname'] = ""
+
+
+        #Remove User Profile field
+        #bundle.data.pop('profile')
+        print "** Dehydrate: " + str(bundle.data)
+        return bundle
 
 class TeamResource(ModelResource):
     venues = fields.ToManyField(VenueResource, 'venues', related_name='team', full=True)
@@ -34,39 +48,6 @@ class TeamResource(ModelResource):
 
     def hydrate(self, bundle):
 
-        return bundle
-
-
-    def dehydrate(self, bundle):
-        players = UserProfile.objects.filter(team__name__exact=bundle.obj.name)
-        #ur = UserResource()
-        plist = []
-        for p in players:
-            p_res = {}
-            p_res['id'] = p.pk
-            p_res['points'] = p.points
-            try:
-                user = User.objects.get(pk=p.pk)
-                p_res['first_name'] = user.first_name
-                p_res['last_name'] = user.last_name
-                p_res['team'] = p.team.pk
-                p_res['teamname'] = p.team.name
-                p_res['currentVenueLastTime'] = p.currentVenueLastPing
-                p_res['currentVenueName'] = p.currentVenue.name
-                p_res['fid'] = p.fid
-            except:
-                p_res['teamname'] = ""
-                p_res['team'] = ""
-                p_res['currentVenueLastTime'] = ""
-                p_res['currentVenueName'] = ""
-                p_res['fid'] = ""
-
-            #to append user resource_uris
-            #p_res = ur.get_resource_uri(p)
-            # to append usernames instead
-            #p_res = p.user.username
-            plist.append(p_res)
-        bundle.data['members'] = plist
         return bundle
 
 
@@ -96,7 +77,7 @@ class UserResource(ModelResource):
  #           url(r"^(?P<resource_name>%s)/(?P<fid/>[\w\d_.-]+)/$" % self._meta.resource_name, self.wrap_view('dispatch_detail'), name="api_dispatch_detail"),
  #       ]
     def hydrate(self, bundle):
-        print "hydrate"
+        print "** hydrate: " + str(bundle.data)
         #checkin call
         if 'poi' in bundle.data:
             poi = bundle.data['poi']
@@ -105,7 +86,7 @@ class UserResource(ModelResource):
             profile = UserProfile.objects.get(pk=bundle.obj.pk)
             profile.checkin(poi)
         #team change call
-        if 'team_id' in bundle.data:
+        if 'new_team_id' in bundle.data:
             team_id = bundle.data['team_id']
             bundle.data.pop('team_id')
             profile = UserProfile.objects.get(pk=bundle.obj.pk)
@@ -115,6 +96,7 @@ class UserResource(ModelResource):
                 team = Team.objects.get(pk=team_id)
             profile.team = team
             profile.save()
+        #reset fbauth call
         if 'fbauthcode' in bundle.data:
             fbauthcode = bundle.data['fbauthcode']
             bundle.data.pop('fbauthcode')
@@ -128,14 +110,14 @@ class UserResource(ModelResource):
     def dehydrate(self, bundle):
         profile = UserProfile.objects.get(pk=bundle.obj.pk)  # check that user and profile pks are safe to assume equal
         try:
-            bundle.data['team'] = profile.team.pk
+            bundle.data['team_id'] = profile.team.pk
             bundle.data['teamname'] = profile.team.name
             bundle.data['currentVenueLastTime'] = profile.currentVenueLastPing
             bundle.data['currentVenueName'] = profile.currentVenue.name
             bundle.data['fid'] = profile.fid
         except:
             bundle.data['teamname'] = ""
-            bundle.data['team'] = ""
+            bundle.data['team_id'] = ""
             bundle.data['currentVenueLastTime'] = ""
             bundle.data['currentVenueName'] = ""
             bundle.data['fid'] = ""

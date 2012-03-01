@@ -19,7 +19,7 @@ class Venue(models.Model):
     crossstreet = models.CharField(max_length=255)  # in iOS code, not masumi's db dump
     zip = models.IntegerField()
     tag_playable = models.BooleanField()
-    tag_owner = models.ForeignKey(User)
+    tag_owner = models.ForeignKey('Team', null=True, blank=True)
     geolong = models.FloatField()
     geolat = models.FloatField()
     state = models.CharField(max_length=2)
@@ -27,7 +27,13 @@ class Venue(models.Model):
     #at = models.CharField()  # seems like an object identifier
 
     def __unicode__(self):
-        return u"%s at %s" % (self.name, self.address)
+        #return u"%s at %s" % (self.name, self.address)
+        return u"%s" % (self.pk)
+
+    def getOwner(self):
+        #TODO: address ties
+        top = self.venuescore_set.all().order_by('-score')[0]
+        return top.team
 
 
 class Team(models.Model):
@@ -42,13 +48,16 @@ class Team(models.Model):
     #remove points and venues
 
     def __unicode__(self):
-        return u"%s and the %ss" % (self.leader, self.name)
+        return u"%s" % (self.pk)
 
 
 class VenueScore(models.Model):
     score = models.IntegerField(default=0)
     team = models.ForeignKey(Team, blank=True, null=True)
     venue = models.ForeignKey(Venue, blank=True, null=True)
+
+    def __unicode__(self):
+        return u"TEAM %s AT %s WITH %s PTS" % (self.team, self.venue, self.score)
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User)
@@ -89,7 +98,8 @@ class UserProfile(models.Model):
                 elapsedTime = datetime.datetime.now() - self.currentVenueLastPing
                 print str(elapsedTime) + " since last checkin at this poi"
                 #If it's been between 55 and 65 s since last checkin, points
-                if elapsedTime > datetime.timedelta(seconds=55) and elapsedTime < datetime.timedelta(seconds=65):
+                #if elapsedTime > datetime.timedelta(seconds=55) and elapsedTime < datetime.timedelta(seconds=65):
+                if elapsedTime > datetime.timedelta(seconds=1) and elapsedTime < datetime.timedelta(seconds=65):
                     print "points awarded"
                     self.points += 1
                     self.team.points += 1
@@ -100,10 +110,25 @@ class UserProfile(models.Model):
                     #Look into collision issues here
                     #I think there's a more proper way to increment variables
                     #When collisions are possible
-                    #teamScores = self.team.venuescore_set.filter(venue=checkin).order_by('score')
-                    #maxScore, maxTeam = 0, None
 
-                if elapsedTime > datetime.timedelta(seconds=55):
+                    #Check for Venue ownership change
+                    top = checkin.getOwner()
+                    print "top team: "+ str(top) + "my team: " + str(self.team)
+                    if top == self.team:
+                        #top = self.venuescore_set.all().order_by('-score')[0]
+                        try:
+                            teams = checkin.team_set.all()
+                            print "Teams with venue: " + str(teams)
+                            for t in teams:
+                                t.venues.remove(checkin)
+                                t.save()
+                        except:
+                            pass #No team previously owned venue
+                        self.team.venues.add(checkin)
+
+
+                #default = 55
+                if elapsedTime > datetime.timedelta(seconds=1):
                     self.currentVenueLastPing = datetime.datetime.now()
             self.save()
         except Exception, e:
