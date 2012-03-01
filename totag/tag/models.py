@@ -5,6 +5,7 @@ import datetime
 
 from tastypie.exceptions import BadRequest
 
+
 class Campus(models.Model):
     name = models.CharField(max_length=255)
 
@@ -55,6 +56,7 @@ class VenueScore(models.Model):
     score = models.IntegerField(default=0)
     team = models.ForeignKey(Team, blank=True, null=True)
     venue = models.ForeignKey(Venue, blank=True, null=True)
+    user = models.ForeignKey(User, blank=True, null=True)
 
     def __unicode__(self):
         return u"TEAM %s AT %s WITH %s PTS" % (self.team, self.venue, self.score)
@@ -103,7 +105,9 @@ class UserProfile(models.Model):
                     print "points awarded"
                     self.points += 1
                     self.team.points += 1
-                    venuescore, created = VenueScore.objects.get_or_create(venue=self.currentVenue, team=self.team)
+                    message = str(self.user.first_name)+" "+str(self.user.last_name)+" checked in at " +str(checkin.name)
+                    Event.objects.create(venue=checkin, team=self.team, user=self.user, message=message)
+                    venuescore, created = VenueScore.objects.get_or_create(venue=checkin, team=self.team, user=self.user)
                     venuescore.score += 1
                     venuescore.save()
                     #TODO: remove team score, have team dehydrate method tally score by venuescore objs
@@ -125,6 +129,8 @@ class UserProfile(models.Model):
                         except:
                             pass #No team previously owned venue
                         self.team.venues.add(checkin)
+                        message = str(self.team)+" took over " +str(checkin.name)+"!"
+                        Event.objects.create(venue=checkin, team=self.team, user=self.user, message=message)
 
 
                 #default = 55
@@ -152,4 +158,14 @@ def create_user_profile(sender, instance, created, **kwargs):
         UserProfile.objects.get_or_create(user=instance)
 
 
+class Event(models.Model):
+    venue = models.ForeignKey(Venue)
+    user = models.ForeignKey(User)
+    team = models.ForeignKey(Team)
+    message = models.CharField(max_length=255)
+    points = models.IntegerField(default=1)
+    time = models.DateTimeField(default=datetime.datetime.now())
+
+    def __unicode__(self):
+        return u"%s" % (self.pk)
 post_save.connect(create_user_profile, sender=User)

@@ -1,4 +1,4 @@
-from totag.tag.models import Team, UserProfile, Venue
+from totag.tag.models import Team, UserProfile, Venue, VenueScore, Event
 from tastypie import fields
 from django.contrib.auth.models import User
 from tastypie.authentication import BasicAuthentication, Authentication
@@ -12,6 +12,7 @@ from django.db import IntegrityError
 from django.conf.urls.defaults import url
 from datetime import datetime
 
+NUM_EVENTS = 10
 
 class VenueResource(ModelResource):
     #tag_owner = fields.ForeignKey(TeamResource, 'tag_owner', related_name="venue", full=True)
@@ -21,16 +22,38 @@ class VenueResource(ModelResource):
 
     def dehydrate(self, bundle):
         venue = Venue.objects.get(pk=bundle.obj.pk)  # check that user and profile pks are safe to assume equal
+
+        #Get owner
+        owner = {}
         try:
-            bundle.data['tag_owner'] = venue.tag_owner.pk
+            owner['id'] = venue.tag_owner.pk
+            owner['name'] = venue.tag_owner.name
+            print "TEAM: "+str(venue.tag_owner.pk)+" VENUE "+str(venue.pk)
+            owner['points'] = VenueScore.objects.get(team=venue.tag_owner, venue=venue).score
+        except Exception, e:
+            print "**** VENUE DEHYDRATE ERR " + str(e)
+            owner['id'] = ""
+            owner['name'] = ""
+            owner['points'] = ""
+        bundle.data['tag_owner'] = owner
 
-        except:
-            bundle.data['teamname'] = ""
+        # Get Events
+        try:
+            events = Event.objects.filter(venue=venue).order_by('-time')[:NUM_EVENTS]
+            eventList = []
+            for e in events:
+                event = {}
+                event['user_id'] = e.user.pk
+                event['team_id'] = e.team.pk
+                event['message'] = e.message
+                event['time'] = e.time
+                event['points'] = e.points
+                eventList.append(event)
+            bundle.data['events'] = eventList
+        except Exception, e:
+            bundle.data['events'] = []
+            print e
 
-
-        #Remove User Profile field
-        #bundle.data.pop('profile')
-        print "** Dehydrate: " + str(bundle.data)
         return bundle
 
 class TeamResource(ModelResource):
@@ -46,7 +69,42 @@ class TeamResource(ModelResource):
         #authentication = Authentication()
         authorization = Authorization()
 
-    def hydrate(self, bundle):
+    def dehydrate(self, bundle):
+        #Remove venue.tag_owner when venue displayed as belonging to a team
+        venues = bundle.data['venues']
+        if len(venues) > 0:
+            #print "*** venue dic: " + str(venues[0].data)
+            venues[0].data.pop('tag_owner')
+        players = UserProfile.objects.filter(team__name__exact=bundle.obj.name)
+        #ur = UserResource()
+        plist = []
+        for p in players:
+            p_res = {}
+            p_res['id'] = p.pk
+            p_res['points'] = p.points
+            try:
+                user = User.objects.get(pk=p.pk)
+                p_res['first_name'] = user.first_name
+                p_res['last_name'] = user.last_name
+                p_res['team'] = p.team.pk
+                p_res['teamname'] = p.team.name
+                p_res['currentVenueLastTime'] = p.currentVenueLastPing
+                p_res['currentVenueName'] = p.currentVenue.name
+                p_res['fid'] = p.fid
+            except:
+                p_res['teamname'] = ""
+                p_res['team'] = ""
+                p_res['currentVenueLastTime'] = ""
+                p_res['currentVenueName'] = ""
+                p_res['fid'] = ""
+
+            #to append user resource_uris
+            #p_res = ur.get_resource_uri(p)
+            # to append usernames instead
+            #p_res = p.user.username
+            plist.append(p_res)
+        bundle.data['members'] = plist
+
 
         return bundle
 
@@ -115,6 +173,7 @@ class UserResource(ModelResource):
             bundle.data['currentVenueLastTime'] = profile.currentVenueLastPing
             bundle.data['currentVenueName'] = profile.currentVenue.name
             bundle.data['fid'] = profile.fid
+            bundle.data['points'] = profile.points
         except:
             bundle.data['teamname'] = ""
             bundle.data['team_id'] = ""
@@ -124,7 +183,24 @@ class UserResource(ModelResource):
 
         #Remove User Profile field
         #bundle.data.pop('profile')
-        print "** Dehydrate: " + str(bundle.data)
+
+        # Get Events
+        try:
+            events = Event.objects.filter(user=bundle.obj).order_by('-time')[:NUM_EVENTS]
+            eventList = []
+            for e in events:
+                event = {}
+                event['team_id'] = e.team.pk
+                event['poi_id'] = e.venue.pk
+                event['message'] = e.message
+                event['time'] = e.time
+                event['points'] = e.points
+                eventList.append(event)
+            bundle.data['events'] = eventList
+        except Exception, e:
+            bundle.data['events'] = []
+            print e
+
         return bundle
 
     def obj_create(self, bundle, request=None, **kwargs):
