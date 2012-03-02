@@ -1,4 +1,4 @@
-from totag.tag.models import Team, UserProfile, Venue, VenueScore, Event
+from totag.tag.models import Team, UserProfile, Venue, UserScore, TeamScore, Event
 from tastypie import fields
 from django.contrib.auth.models import User
 from tastypie.authentication import BasicAuthentication, Authentication
@@ -31,8 +31,8 @@ class VenueResource(ModelResource):
         try:
             owner['id'] = venue.tag_owner.pk
             owner['name'] = venue.tag_owner.name
-            print "TEAM: " + str(venue.tag_owner.pk) + " VENUE " + str(venue.pk)
-            owner['points'] = VenueScore.objects.get(team=venue.tag_owner, venue=venue).score
+            #print "TEAM: " + str(venue.tag_owner.pk) + " VENUE " + str(venue.pk)
+            owner['points'] = TeamScore.objects.get(team=venue.tag_owner, venue=venue).score
         except Exception, e:
             print "**** VENUE DEHYDRATE ERR " + str(e)
             owner['id'] = ""
@@ -110,7 +110,7 @@ class TeamResource(ModelResource):
         bundle.data['members'] = plist
 
         # Get Scores
-        scores = VenueScore.objects.filter(team=bundle.obj)
+        scores = UserScore.objects.filter(team=bundle.obj)
         scoreList = []
         #poiList = scores.filter(poi)
         teamScores = {}
@@ -176,7 +176,7 @@ class UserResource(ModelResource):
             else:
                 team = Team.objects.get(pk=team_id)
             #delete old team points
-            VenueScore.objects.filter(team=profile.team, user=bundle.obj).delete()
+            UserScore.objects.filter(team=profile.team, user=bundle.obj).delete()
             oldpoints = profile.points
             profile.points = 0
             profile.team.points = profile.team.points - oldpoints
@@ -237,7 +237,7 @@ class UserResource(ModelResource):
             print e
 
         # Get Scores
-        scores = VenueScore.objects.filter(user=bundle.obj)
+        scores = UserScore.objects.filter(user=bundle.obj)
         scoreList = []
         #poiList = scores.filter(poi)
         for s in scores:

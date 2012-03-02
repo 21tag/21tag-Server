@@ -40,7 +40,10 @@ class Venue(models.Model):
         try:
             top = self.teamscore_set.all().order_by('-score')[0]
             print "get Owner top for " + str(self.pk) + " :" + str(top)
-            #Fix this logic to combine all VSs by users into team
+            #Set Venue tag owner if ownership change occured
+            if top.team != self.tag_owner:
+                self.tag_owner = top.team
+                self.save()
         except Exception, e:
             print "get owner error: " + str(e)
             #No owner yet
@@ -67,8 +70,11 @@ class TeamScore(models.Model):
     team = models.ForeignKey(Team)
     venue = models.ForeignKey(Venue)
 
+    def __unicode__(self):
+        return u"TEAM %s AT %s WITH %s PTS" % (self.team, self.venue, self.score)
+
 #TODO: rename UserScore
-class VenueScore(models.Model):
+class UserScore(models.Model):
     score = models.IntegerField(default=0)
     team = models.ForeignKey(Team)
     venue = models.ForeignKey(Venue)
@@ -76,6 +82,19 @@ class VenueScore(models.Model):
 
     def __unicode__(self):
         return u"USER %s TEAM %s AT %s WITH %s PTS" % (self.user, self.team, self.venue, self.score)
+
+    #Auto increments teamScore
+    def addScore(self, score):
+        self.score += score
+        teamscore = TeamScore.objects.get(team=self.team, venue=self.venue)
+        teamscore.score += score
+        teamscore.save()
+        self.save()
+
+    def save(self, *args, **kwargs):
+        teamscore, created = TeamScore.objects.get_or_create(team=self.team, venue=self.venue)
+
+        super(UserScore, self).save(*args, **kwargs)
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User)
@@ -111,7 +130,7 @@ class UserProfile(models.Model):
                 self.currentVenue = Venue.objects.get(pk=poi)
                 self.currentVenueLastPing = datetime.datetime.now()
                 self.save()
-                message = str(self.user.first_name)+" "+str(self.user.last_name)+" checked in at " +str(self.currentVenue.name)
+                message = str(self.user.first_name) + " " + str(self.user.last_name) + " checked in at " + str(self.currentVenue.name)
                 Event.objects.create(venue=self.currentVenue, team=self.team, user=self.user, message=message)
             else:
                 elapsedTime = datetime.datetime.now() - self.currentVenueLastPing
@@ -124,9 +143,9 @@ class UserProfile(models.Model):
 
                     self.points += 1
                     self.team.points += 1
-                    venuescore, created = VenueScore.objects.get_or_create(venue=checkin, team=self.team, user=self.user)
-                    venuescore.score += 1
-                    venuescore.save()
+                    userscore, created = UserScore.objects.get_or_create(venue=checkin, team=self.team, user=self.user)
+                    userscore.addScore(1)  # auto adds teamScore
+                    userscore.save()
                     #TODO: remove team score, have team dehydrate method tally score by venuescore objs
                     #Look into collision issues here
                     #I think there's a more proper way to increment variables
