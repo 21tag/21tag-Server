@@ -49,7 +49,7 @@ class Team(models.Model):
     #remove points and venues
 
     def __unicode__(self):
-        return u"%s" % (self.pk)
+        return u"%s %s" % (self.pk, self.name)
 
 
 class VenueScore(models.Model):
@@ -59,7 +59,7 @@ class VenueScore(models.Model):
     user = models.ForeignKey(User, blank=True, null=True)
 
     def __unicode__(self):
-        return u"TEAM %s AT %s WITH %s PTS" % (self.team, self.venue, self.score)
+        return u"USER %s TEAM %s AT %s WITH %s PTS" % (self.user, self.team, self.venue, self.score)
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User)
@@ -164,7 +164,7 @@ class Event(models.Model):
     team = models.ForeignKey(Team)
     message = models.CharField(max_length=255)
     points = models.IntegerField(default=1)
-    time = models.DateTimeField(default=datetime.datetime.now())
+    time = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
         return u"%s" % (self.pk)

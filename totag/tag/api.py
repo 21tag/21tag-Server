@@ -13,6 +13,9 @@ from django.conf.urls.defaults import url
 from datetime import datetime
 
 NUM_EVENTS = 10
+HQ_VENUE_PK = 3
+#Use this as the venue for Events without proper venue
+#Such as team switching
 
 class VenueResource(ModelResource):
     #tag_owner = fields.ForeignKey(TeamResource, 'tag_owner', related_name="venue", full=True)
@@ -105,6 +108,23 @@ class TeamResource(ModelResource):
             plist.append(p_res)
         bundle.data['members'] = plist
 
+        # Get Scores
+        scores = VenueScore.objects.filter(team=bundle.obj)
+        scoreList = []
+        #poiList = scores.filter(poi)
+        teamScores = {}
+        for s in scores:
+            if s.venue.pk in teamScores:
+                teamScores[str(s.venue.pk)] += s.score
+            else:
+                teamScores[str(s.venue.pk)] = s.score
+        print teamScores
+        for poi in teamScores:
+            score = {}
+            score['poi'] = int(poi)
+            score['points'] = teamScores[poi]
+            scoreList.append(score)
+        bundle.data['poi_pts'] = scoreList
 
         return bundle
 
@@ -135,7 +155,7 @@ class UserResource(ModelResource):
  #           url(r"^(?P<resource_name>%s)/(?P<fid/>[\w\d_.-]+)/$" % self._meta.resource_name, self.wrap_view('dispatch_detail'), name="api_dispatch_detail"),
  #       ]
     def hydrate(self, bundle):
-        print "** hydrate: " + str(bundle.data)
+        #print "** hydrate: " + str(bundle.data)
         #checkin call
         if 'poi' in bundle.data:
             poi = bundle.data['poi']
@@ -145,15 +165,26 @@ class UserResource(ModelResource):
             profile.checkin(poi)
         #team change call
         if 'new_team_id' in bundle.data:
-            team_id = bundle.data['team_id']
+            print "team change request"
+            team_id = bundle.data['new_team_id']
+            print team_id
             bundle.data.pop('team_id')
             profile = UserProfile.objects.get(pk=bundle.obj.pk)
             if team_id == 0:
                 team = None
             else:
                 team = Team.objects.get(pk=team_id)
-            profile.team = team
+            #delete old team points
+            VenueScore.objects.filter(team=profile.team, user=bundle.obj).delete()
+            oldpoints = profile.points
+            profile.points = 0
+            profile.team.points = profile.team.points - oldpoints
             profile.save()
+            message = str(bundle.obj.first_name) + " " + str(bundle.obj.last_name) + " left team " + str(profile.team.name)
+            Event.objects.create(venue=Venue.objects.get(pk=HQ_VENUE_PK), user=bundle.obj, team=profile.team, points=-oldpoints, message=message)
+            #set new team
+            profile.team = team
+
         #reset fbauth call
         if 'fbauthcode' in bundle.data:
             fbauthcode = bundle.data['fbauthcode']
@@ -201,6 +232,16 @@ class UserResource(ModelResource):
             bundle.data['events'] = []
             print e
 
+        # Get Scores
+        scores = VenueScore.objects.filter(user=bundle.obj)
+        scoreList = []
+        #poiList = scores.filter(poi)
+        for s in scores:
+            score = {}
+            score['poi'] = s.venue.pk
+            score['pts'] = s.score
+            scoreList.append(score)
+        bundle.data['poi_pts'] = scoreList
         return bundle
 
     def obj_create(self, bundle, request=None, **kwargs):
