@@ -5,6 +5,8 @@ import datetime
 
 from tastypie.exceptions import BadRequest
 
+CHECKIN_MAX = 65  # seconds without checkin until "checked out"
+CHECKIN_MIN = 5  # fundamental time b/t checkins to award 1 pt
 
 class Campus(models.Model):
     name = models.CharField(max_length=255)
@@ -17,7 +19,7 @@ class Venue(models.Model):
     name = models.CharField(max_length=255)
     campus = models.ForeignKey(Campus)
     address = models.CharField(max_length=255)
-    crossstreet = models.CharField(max_length=255)  # in iOS code, not masumi's db dump
+    crossstreet = models.CharField(max_length=255, null=True, blank=True)  # in iOS code, not masumi's db dump
     zip = models.IntegerField()
     tag_playable = models.BooleanField()
     tag_owner = models.ForeignKey('Team', null=True, blank=True)
@@ -29,12 +31,21 @@ class Venue(models.Model):
 
     def __unicode__(self):
         #return u"%s at %s" % (self.name, self.address)
-        return u"%s" % (self.pk)
+        return u"%s %s" % (self.pk, self.name)
 
+
+    #returns pk of team on top
     def getOwner(self):
         #TODO: address ties
-        top = self.venuescore_set.all().order_by('-score')[0]
-        return top.team
+        try:
+            top = self.teamscore_set.all().order_by('-score')[0]
+            print "get Owner top for " + str(self.pk) + " :" + str(top)
+            #Fix this logic to combine all VSs by users into team
+        except Exception, e:
+            print "get owner error: " + str(e)
+            #No owner yet
+            return 0
+        return top.team.pk
 
 
 class Team(models.Model):
@@ -51,12 +62,17 @@ class Team(models.Model):
     def __unicode__(self):
         return u"%s %s" % (self.pk, self.name)
 
+class TeamScore(models.Model):
+    score = models.IntegerField(default=0)
+    team = models.ForeignKey(Team)
+    venue = models.ForeignKey(Venue)
 
+#TODO: rename UserScore
 class VenueScore(models.Model):
     score = models.IntegerField(default=0)
-    team = models.ForeignKey(Team, blank=True, null=True)
-    venue = models.ForeignKey(Venue, blank=True, null=True)
-    user = models.ForeignKey(User, blank=True, null=True)
+    team = models.ForeignKey(Team)
+    venue = models.ForeignKey(Venue)
+    user = models.ForeignKey(User)
 
     def __unicode__(self):
         return u"USER %s TEAM %s AT %s WITH %s PTS" % (self.user, self.team, self.venue, self.score)
@@ -85,28 +101,29 @@ class UserProfile(models.Model):
 
     def checkin(self, poi):
         #If first checkin, self.CurrentVenue will be null
-        if self.currentVenue == None:
-            print "first checkin"
-            self.currentVenue = Venue.objects.get(pk=poi)
-            self.currentVenueLastPing = datetime.datetime.now()
-            self.save()
-            return
+
         try:
             print "checkin"
             checkin = Venue.objects.get(pk=poi)
-            if self.currentVenue.pk != checkin.pk:
-                self.currentVenue = checkin
+            #If first checkin or expired time
+            if self.currentVenue.pk != checkin.pk or self.currentVenue == None or (datetime.datetime.now() - self.currentVenueLastPing > datetime.timedelta(seconds=CHECKIN_MAX)):
+                print "first checkin"
+                self.currentVenue = Venue.objects.get(pk=poi)
+                self.currentVenueLastPing = datetime.datetime.now()
+                self.save()
+                message = str(self.user.first_name)+" "+str(self.user.last_name)+" checked in at " +str(self.currentVenue.name)
+                Event.objects.create(venue=self.currentVenue, team=self.team, user=self.user, message=message)
             else:
                 elapsedTime = datetime.datetime.now() - self.currentVenueLastPing
                 print str(elapsedTime) + " since last checkin at this poi"
                 #If it's been between 55 and 65 s since last checkin, points
                 #if elapsedTime > datetime.timedelta(seconds=55) and elapsedTime < datetime.timedelta(seconds=65):
-                if elapsedTime > datetime.timedelta(seconds=1) and elapsedTime < datetime.timedelta(seconds=65):
+                if elapsedTime > datetime.timedelta(seconds=CHECKIN_MIN) and elapsedTime < datetime.timedelta(seconds=CHECKIN_MAX):
                     print "points awarded"
+                    oldOwner = checkin.getOwner()
+
                     self.points += 1
                     self.team.points += 1
-                    message = str(self.user.first_name)+" "+str(self.user.last_name)+" checked in at " +str(checkin.name)
-                    Event.objects.create(venue=checkin, team=self.team, user=self.user, message=message)
                     venuescore, created = VenueScore.objects.get_or_create(venue=checkin, team=self.team, user=self.user)
                     venuescore.score += 1
                     venuescore.save()
@@ -114,11 +131,14 @@ class UserProfile(models.Model):
                     #Look into collision issues here
                     #I think there's a more proper way to increment variables
                     #When collisions are possible
-
                     #Check for Venue ownership change
-                    top = checkin.getOwner()
-                    print "top team: "+ str(top) + "my team: " + str(self.team)
-                    if top == self.team:
+                    newOwner = checkin.getOwner()
+                    if oldOwner != newOwner:
+                        print "team takeover!"
+                        message = str(self.team.name) + " took over " + str(checkin.name) + "!"
+                        Event.objects.create(venue=checkin, team=self.team, user=self.user, message=message)
+                    print "top team: " + str(newOwner) + "my team: " + str(self.team)
+                    if newOwner == self.team:
                         #top = self.venuescore_set.all().order_by('-score')[0]
                         try:
                             teams = checkin.team_set.all()
@@ -126,11 +146,11 @@ class UserProfile(models.Model):
                             for t in teams:
                                 t.venues.remove(checkin)
                                 t.save()
-                        except:
-                            pass #No team previously owned venue
+                        except Exception, e:
+                            print 'team owner removal error: ' + str(e)
+
                         self.team.venues.add(checkin)
-                        message = str(self.team)+" took over " +str(checkin.name)+"!"
-                        Event.objects.create(venue=checkin, team=self.team, user=self.user, message=message)
+
 
 
                 #default = 55

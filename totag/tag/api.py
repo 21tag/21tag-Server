@@ -31,7 +31,7 @@ class VenueResource(ModelResource):
         try:
             owner['id'] = venue.tag_owner.pk
             owner['name'] = venue.tag_owner.name
-            print "TEAM: "+str(venue.tag_owner.pk)+" VENUE "+str(venue.pk)
+            print "TEAM: " + str(venue.tag_owner.pk) + " VENUE " + str(venue.pk)
             owner['points'] = VenueScore.objects.get(team=venue.tag_owner, venue=venue).score
         except Exception, e:
             print "**** VENUE DEHYDRATE ERR " + str(e)
@@ -49,7 +49,7 @@ class VenueResource(ModelResource):
                 event['user_id'] = e.user.pk
                 event['team_id'] = e.team.pk
                 event['message'] = e.message
-                event['time'] = e.time
+                event['time'] = e.time.strftime('%Y-%m-%d %H:%M:%S -0600')
                 event['points'] = e.points
                 eventList.append(event)
             bundle.data['events'] = eventList
@@ -75,9 +75,10 @@ class TeamResource(ModelResource):
     def dehydrate(self, bundle):
         #Remove venue.tag_owner when venue displayed as belonging to a team
         venues = bundle.data['venues']
-        if len(venues) > 0:
+        for index, venue in enumerate(bundle.data['venues']):
             #print "*** venue dic: " + str(venues[0].data)
-            venues[0].data.pop('tag_owner')
+            venues[index].data.pop('tag_owner')
+            venues[index].data.pop('events')
         players = UserProfile.objects.filter(team__name__exact=bundle.obj.name)
         #ur = UserResource()
         plist = []
@@ -91,7 +92,7 @@ class TeamResource(ModelResource):
                 p_res['last_name'] = user.last_name
                 p_res['team'] = p.team.pk
                 p_res['teamname'] = p.team.name
-                p_res['currentVenueLastTime'] = p.currentVenueLastPing
+                p_res['currentVenueLastTime'] = p.currentVenueLastPing.strftime('%Y-%m-%d %H:%M:%S -0600')
                 p_res['currentVenueName'] = p.currentVenue.name
                 p_res['fid'] = p.fid
             except:
@@ -122,7 +123,7 @@ class TeamResource(ModelResource):
         for poi in teamScores:
             score = {}
             score['poi'] = int(poi)
-            score['points'] = teamScores[poi]
+            score['pts'] = teamScores[poi]
             scoreList.append(score)
         bundle.data['poi_pts'] = scoreList
 
@@ -201,11 +202,14 @@ class UserResource(ModelResource):
         try:
             bundle.data['team_id'] = profile.team.pk
             bundle.data['teamname'] = profile.team.name
-            bundle.data['currentVenueLastTime'] = profile.currentVenueLastPing
+                                                                                    #  2001-03-24 10:45:32 +0600
+            bundle.data['currentVenueLastTime'] = profile.currentVenueLastPing.strftime('%Y-%m-%d %H:%M:%S -0600')
             bundle.data['currentVenueName'] = profile.currentVenue.name
+            bundle.data['currentVenueId'] = profile.currentVenue.pk
             bundle.data['fid'] = profile.fid
             bundle.data['points'] = profile.points
         except:
+            bundle.data['currentVenueId'] = ""
             bundle.data['teamname'] = ""
             bundle.data['team_id'] = ""
             bundle.data['currentVenueLastTime'] = ""
@@ -224,7 +228,7 @@ class UserResource(ModelResource):
                 event['team_id'] = e.team.pk
                 event['poi_id'] = e.venue.pk
                 event['message'] = e.message
-                event['time'] = e.time
+                event['time'] = e.time.strftime('%Y-%m-%d %H:%M:%S -0600')
                 event['points'] = e.points
                 eventList.append(event)
             bundle.data['events'] = eventList
