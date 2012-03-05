@@ -43,6 +43,7 @@ class Venue(models.Model):
             #Set Venue tag owner if ownership change occured
             if top.team != self.tag_owner:
                 self.tag_owner = top.team
+                top.team.venues.add(self)
                 self.save()
         except Exception, e:
             print "get owner error: " + str(e)
@@ -86,10 +87,14 @@ class UserScore(models.Model):
     #Auto increments teamScore
     def addScore(self, score):
         self.score += score
+        self.team.points += score
+        self.team.save()
+        #Test to see if self.team must be explicitly saved
+        self.save()
         teamscore = TeamScore.objects.get(team=self.team, venue=self.venue)
         teamscore.score += score
         teamscore.save()
-        self.save()
+
 
     def save(self, *args, **kwargs):
         teamscore, created = TeamScore.objects.get_or_create(team=self.team, venue=self.venue)
@@ -170,10 +175,8 @@ class UserProfile(models.Model):
 
                         self.team.venues.add(checkin)
 
-
-
                 #default = 55
-                if elapsedTime > datetime.timedelta(seconds=1):
+                if elapsedTime > datetime.timedelta(seconds=CHECKIN_MIN):
                     self.currentVenueLastPing = datetime.datetime.now()
             self.save()
         except Exception, e:

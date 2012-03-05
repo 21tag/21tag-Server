@@ -90,14 +90,14 @@ class TeamResource(ModelResource):
                 user = User.objects.get(pk=p.pk)
                 p_res['first_name'] = user.first_name
                 p_res['last_name'] = user.last_name
-                p_res['team'] = p.team.pk
+                p_res['team_id'] = p.team.pk
                 p_res['teamname'] = p.team.name
                 p_res['currentVenueLastTime'] = p.currentVenueLastPing.strftime('%Y-%m-%d %H:%M:%S -0600')
                 p_res['currentVenueName'] = p.currentVenue.name
                 p_res['fid'] = p.fid
             except:
                 p_res['teamname'] = ""
-                p_res['team'] = ""
+                p_res['team_id'] = ""
                 p_res['currentVenueLastTime'] = ""
                 p_res['currentVenueName'] = ""
                 p_res['fid'] = ""
@@ -171,7 +171,8 @@ class UserResource(ModelResource):
             print team_id
             bundle.data.pop('team_id')
             profile = UserProfile.objects.get(pk=bundle.obj.pk)
-            if team_id == 0:
+            #leave team request
+            if int(team_id) == 0:
                 team = None
             else:
                 team = Team.objects.get(pk=team_id)
@@ -180,11 +181,14 @@ class UserResource(ModelResource):
             oldpoints = profile.points
             profile.points = 0
             profile.team.points = profile.team.points - oldpoints
-            profile.save()
             message = str(bundle.obj.first_name) + " " + str(bundle.obj.last_name) + " left team " + str(profile.team.name)
             Event.objects.create(venue=Venue.objects.get(pk=HQ_VENUE_PK), user=bundle.obj, team=profile.team, points=-oldpoints, message=message)
             #set new team
-            profile.team = team
+            try:
+                profile.team = team
+            except Exception, e:
+                print e
+            profile.save()
 
         #reset fbauth call
         if 'fbauthcode' in bundle.data:

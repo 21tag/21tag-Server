@@ -4,7 +4,7 @@ from django.template import RequestContext
 from django.http import HttpResponse
 import json
 from django.contrib.auth.models import User
-from models import Team, Venue
+from models import Team, Venue, UserScore
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 import facebook
@@ -31,6 +31,16 @@ def checkin(request):
             print e
     return HttpResponse("malformed request")
 
+@csrf_exempt
+def syncTeamPoints(request):
+    teams = Team.objects.all()
+    for team in teams:
+        users = UserScore.objects.filter(team=team)
+        tally = 0
+        for u in users:
+            tally += u.score
+        print str(team.name) + " " + str(tally)
+    return HttpResponse("points synced")
 
 @csrf_exempt
 def getTeam(request):
