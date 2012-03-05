@@ -60,7 +60,7 @@ class VenueResource(ModelResource):
         return bundle
 
 class TeamResource(ModelResource):
-    venues = fields.ToManyField(VenueResource, 'venues', related_name='team', full=True)
+    venues = fields.ToManyField(VenueResource, 'venues', related_name='team', full=True, blank=True, null=True)
     #authors = fields.ToManyField('path.to.api.resources.AuthorResource', 'author_set', related_name='entry')
     class Meta:
         queryset = Team.objects.all()
@@ -71,6 +71,15 @@ class TeamResource(ModelResource):
         # FOR DEV ONLY
         #authentication = Authentication()
         authorization = Authorization()
+    def hydrate(self, bundle):
+        print "*** TEAM HYDRATE: " + str(bundle.data)
+        if 'user_id' in bundle.data:
+            user_id = bundle.data['user_id']
+            bundle.data.pop('user_id')
+            profile = User.objects.get(pk=user_id).get_profile()
+            profile.team = Team.objects.get(pk=bundle.obj.pk)
+            profile.save()
+        return bundle
 
     def dehydrate(self, bundle):
         #Remove venue.tag_owner when venue displayed as belonging to a team
@@ -92,9 +101,15 @@ class TeamResource(ModelResource):
                 p_res['last_name'] = user.last_name
                 p_res['team_id'] = p.team.pk
                 p_res['teamname'] = p.team.name
-                p_res['currentVenueLastTime'] = p.currentVenueLastPing.strftime('%Y-%m-%d %H:%M:%S -0600')
-                p_res['currentVenueName'] = p.currentVenue.name
                 p_res['fid'] = p.fid
+                if p.currentVenue != None:
+                    p_res['currentVenueLastTime'] = p.currentVenueLastPing.strftime('%Y-%m-%d %H:%M:%S -0600')
+                    p_res['currentVenueName'] = p.currentVenue.name
+                    p_res['currentVenueId'] = p.currentVenue.pk
+                else:
+                    p_res['currentVenueId'] = ""
+                    p_res['currentVenueLastTime'] = ""
+                    p_res['currentVenueName'] = ""
             except:
                 p_res['teamname'] = ""
                 p_res['team_id'] = ""
@@ -171,18 +186,21 @@ class UserResource(ModelResource):
             print team_id
             bundle.data.pop('team_id')
             profile = UserProfile.objects.get(pk=bundle.obj.pk)
+            oldTeam = profile.team
             #leave team request
             if int(team_id) == 0:
                 team = None
             else:
                 team = Team.objects.get(pk=team_id)
-            #delete old team points
-            UserScore.objects.filter(team=profile.team, user=bundle.obj).delete()
-            oldpoints = profile.points
-            profile.points = 0
-            profile.team.points = profile.team.points - oldpoints
-            message = str(bundle.obj.first_name) + " " + str(bundle.obj.last_name) + " left team " + str(profile.team.name)
-            Event.objects.create(venue=Venue.objects.get(pk=HQ_VENUE_PK), user=bundle.obj, team=profile.team, points=-oldpoints, message=message)
+            if oldTeam != None:
+                #delete old team points
+                UserScore.objects.filter(team=profile.team, user=bundle.obj).delete()
+                oldpoints = profile.points
+                profile.points = 0
+                profile.team.points = profile.team.points - oldpoints
+                #Generate event if user left a previously non-null team
+                message = str(bundle.obj.first_name) + " " + str(bundle.obj.last_name) + " left team " + str(profile.team.name)
+                Event.objects.create(venue=None, user=bundle.obj, team=profile.team, points=-oldpoints, message=message)
             #set new team
             try:
                 profile.team = team
@@ -202,17 +220,22 @@ class UserResource(ModelResource):
 
     # Prepare model data for client consumption
     def dehydrate(self, bundle):
-        profile = UserProfile.objects.get(pk=bundle.obj.pk)  # check that user and profile pks are safe to assume equal
-        try:
+        profile = User.objects.get(pk=bundle.obj.pk).get_profile()
+        try:  # if user has no team, all data null. User can have team, but not yet checked in. NoneType.pk throws error
             bundle.data['team_id'] = profile.team.pk
             bundle.data['teamname'] = profile.team.name
-                                                                                    #  2001-03-24 10:45:32 +0600
-            bundle.data['currentVenueLastTime'] = profile.currentVenueLastPing.strftime('%Y-%m-%d %H:%M:%S -0600')
-            bundle.data['currentVenueName'] = profile.currentVenue.name
-            bundle.data['currentVenueId'] = profile.currentVenue.pk
             bundle.data['fid'] = profile.fid
-            bundle.data['points'] = profile.points
-        except:
+            bundle.data['points'] = profile.points                                                # 2001-03-24 10:45:32 +0600
+            if profile.currentVenue != None:
+                bundle.data['currentVenueLastTime'] = profile.currentVenueLastPing.strftime('%Y-%m-%d %H:%M:%S -0600')
+                bundle.data['currentVenueName'] = profile.currentVenue.name
+                bundle.data['currentVenueId'] = profile.currentVenue.pk
+            else:
+                bundle.data['currentVenueId'] = ""
+                bundle.data['currentVenueLastTime'] = ""
+                bundle.data['currentVenueName'] = ""
+        except Exception, e:
+            print e
             bundle.data['currentVenueId'] = ""
             bundle.data['teamname'] = ""
             bundle.data['team_id'] = ""

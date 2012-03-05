@@ -6,7 +6,7 @@ import datetime
 from tastypie.exceptions import BadRequest
 
 CHECKIN_MAX = 65  # seconds without checkin until "checked out"
-CHECKIN_MIN = 5  # fundamental time b/t checkins to award 1 pt
+CHECKIN_MIN = 30  # fundamental time b/t checkins to award 1 pt
 
 class Campus(models.Model):
     name = models.CharField(max_length=255)
@@ -17,8 +17,8 @@ class Campus(models.Model):
 
 class Venue(models.Model):
     name = models.CharField(max_length=255)
-    campus = models.ForeignKey(Campus)
-    address = models.CharField(max_length=255)
+    campus = models.ForeignKey(Campus, blank=True, null=True)
+    address = models.CharField(max_length=255, null=True, blank=True)
     crossstreet = models.CharField(max_length=255, null=True, blank=True)  # in iOS code, not masumi's db dump
     zip = models.IntegerField()
     tag_playable = models.BooleanField()
@@ -59,7 +59,7 @@ class Team(models.Model):
     motto = models.CharField(max_length=255)
     #avatar = models.FileField()
     leader = models.ForeignKey(User, blank=True, null=True)
-    venues = models.ManyToManyField(Venue, blank=True)
+    venues = models.ManyToManyField(Venue, blank=True, null=True)
     points = models.IntegerField(default=0)
     #remove points and venues
 
@@ -201,7 +201,7 @@ def create_user_profile(sender, instance, created, **kwargs):
 
 
 class Event(models.Model):
-    venue = models.ForeignKey(Venue)
+    venue = models.ForeignKey(Venue, blank=True, null=True)  #for user leaving team
     user = models.ForeignKey(User)
     team = models.ForeignKey(Team)
     message = models.CharField(max_length=255)
