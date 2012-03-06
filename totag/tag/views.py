@@ -316,9 +316,10 @@ def getpoisdetails(request):
         for poi in venues:
             poiloc = (poi.geolat, poi.geolong)
             if distance(userloc, poiloc) < 400:
-                events = []
+                eventList = []
                 try:
-                    events = Event.objects.get(venue=poi)
+                    #print poi
+                    events = Event.objects.filter(venue=poi).order_by('-time')[:10]
                     for e in events:
                         event = {}
                         event["message"] = e.message
@@ -327,13 +328,14 @@ def getpoisdetails(request):
                             event["team_id"] = e.team.pk
                         else:
                             event["team_id"] = ""
-                        event["time"] = e.time
+                        event["time"] = e.time.strftime('%Y-%m-%d %H:%M:%S -0600')
                         event["user_id"] = e.user.pk
-                        events.append(event)
-                except:
-                    pass
+                        eventList.append(event)
+                except Exception, e:
+                    event = {}
+                    #print "poidetails err " + str(e)
                 thispoi = {}
-                thispoi["events"] = events
+                thispoi["events"] = eventList
                 thispoi["id"] = poi.id
                 thispoi["name"] = poi.name
                 thispoi["zip"] = poi.zip
@@ -361,13 +363,12 @@ def getpoisdetails(request):
         return HttpResponse("invalid request")
     container = {}
     meta = {}
-    meta['total_count']=len(pois)
+    meta['total_count'] = len(pois)
     meta['previous'] = ""
     meta['next'] = ""
     container["meta"] = meta
     container["objects"] = pois
-    
-    print pois
+    #print pois
     return HttpResponse(json.dumps(container), mimetype="application/json")
 
 @csrf_exempt
