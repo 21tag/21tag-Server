@@ -6,7 +6,8 @@ import datetime
 from tastypie.exceptions import BadRequest
 
 CHECKIN_MAX = 60 * 6  # seconds without checkin until "checked out"
-CHECKIN_MIN = 60 * 5  # fundamental time b/t checkins to award 1 pt
+CHECKIN_MIN = 60 * 4  # fundamental time b/t checkins to award 1 pt
+CHECKIN_PTS = 5  # pts per checkin
 
 class Campus(models.Model):
     name = models.CharField(max_length=255)
@@ -132,55 +133,56 @@ class UserProfile(models.Model):
             justDoIt = False
             if self.currentVenue == None:
                 justDoIt = True
-            if justDoIt or self.currentVenue.pk != checkin.pk or self.currentVenue == None or (datetime.datetime.now() - self.currentVenueLastPing > datetime.timedelta(seconds=CHECKIN_MAX)):
-                print "first checkin"
-                self.currentVenue = Venue.objects.get(pk=poi)
+            #if justDoIt or self.currentVenue.pk != checkin.pk or self.currentVenue == None or (datetime.datetime.now() - self.currentVenueLastPing > datetime.timedelta(seconds=CHECKIN_MAX)):
+            #    print "first checkin"
+            #    self.currentVenue = Venue.objects.get(pk=poi)
+            #    self.currentVenueLastPing = datetime.datetime.now()
+            #    self.save()
+            #    message = str(self.user.first_name) + " " + str(self.user.last_name) + " checked in at " + str(self.currentVenue.name)
+            #    Event.objects.create(venue=self.currentVenue, team=self.team, user=self.user, message=message)
+            #else:
+            elapsedTime = datetime.datetime.now() - self.currentVenueLastPing
+            print str(elapsedTime) + " since last checkin at this poi"
+            #If it's been between 55 and 65 s since last checkin, points
+            #if elapsedTime > datetime.timedelta(seconds=55) and elapsedTime < datetime.timedelta(seconds=65):
+            #if elapsedTime > datetime.timedelta(seconds=CHECKIN_MIN) and elapsedTime < datetime.timedelta(seconds=CHECKIN_MAX):
+
+            #New behavior: A checkin represents 5m of checked in time
+            if elapsedTime > datetime.timedelta(seconds=CHECKIN_MIN):
                 self.currentVenueLastPing = datetime.datetime.now()
+                print "points awarded"
+                oldOwner = checkin.getOwner()
+
+                self.points += CHECKIN_PTS
+                self.team.points += CHECKIN_PTS
+                userscore, created = UserScore.objects.get_or_create(venue=checkin, team=self.team, user=self.user)
+                userscore.addScore(CHECKIN_PTS)  # auto adds teamScore
+                userscore.save()
+                #TODO: remove team score, have team dehydrate method tally score by venuescore objs
+                #Look into collision issues here
+                #I think there's a more proper way to increment variables
+                #When collisions are possible
+                #Check for Venue ownership change
+                newOwner = checkin.getOwner()
+                if oldOwner != newOwner:
+                    print "team takeover!"
+                    message = str(self.team.name) + " took over " + str(checkin.name) + "!"
+                    Event.objects.create(venue=checkin, team=self.team, user=self.user, message=message)
+                print "top team: " + str(newOwner) + "my team: " + str(self.team)
+                if newOwner == self.team:
+                    #top = self.venuescore_set.all().order_by('-score')[0]
+                    try:
+                        teams = checkin.team_set.all()
+                        print "Teams with venue: " + str(teams)
+                        for t in teams:
+                            t.venues.remove(checkin)
+                            t.save()
+                    except Exception, e:
+                        print 'team owner removal error: ' + str(e)
+
+                    self.team.venues.add(checkin)
+
                 self.save()
-                message = str(self.user.first_name) + " " + str(self.user.last_name) + " checked in at " + str(self.currentVenue.name)
-                Event.objects.create(venue=self.currentVenue, team=self.team, user=self.user, message=message)
-            else:
-                elapsedTime = datetime.datetime.now() - self.currentVenueLastPing
-                print str(elapsedTime) + " since last checkin at this poi"
-                #If it's been between 55 and 65 s since last checkin, points
-                #if elapsedTime > datetime.timedelta(seconds=55) and elapsedTime < datetime.timedelta(seconds=65):
-                if elapsedTime > datetime.timedelta(seconds=CHECKIN_MIN) and elapsedTime < datetime.timedelta(seconds=CHECKIN_MAX):
-                    print "points awarded"
-                    oldOwner = checkin.getOwner()
-
-                    self.points += 1
-                    self.team.points += 1
-                    userscore, created = UserScore.objects.get_or_create(venue=checkin, team=self.team, user=self.user)
-                    userscore.addScore(1)  # auto adds teamScore
-                    userscore.save()
-                    #TODO: remove team score, have team dehydrate method tally score by venuescore objs
-                    #Look into collision issues here
-                    #I think there's a more proper way to increment variables
-                    #When collisions are possible
-                    #Check for Venue ownership change
-                    newOwner = checkin.getOwner()
-                    if oldOwner != newOwner:
-                        print "team takeover!"
-                        message = str(self.team.name) + " took over " + str(checkin.name) + "!"
-                        Event.objects.create(venue=checkin, team=self.team, user=self.user, message=message)
-                    print "top team: " + str(newOwner) + "my team: " + str(self.team)
-                    if newOwner == self.team:
-                        #top = self.venuescore_set.all().order_by('-score')[0]
-                        try:
-                            teams = checkin.team_set.all()
-                            print "Teams with venue: " + str(teams)
-                            for t in teams:
-                                t.venues.remove(checkin)
-                                t.save()
-                        except Exception, e:
-                            print 'team owner removal error: ' + str(e)
-
-                        self.team.venues.add(checkin)
-
-                #default = 55
-                if elapsedTime > datetime.timedelta(seconds=CHECKIN_MIN):
-                    self.currentVenueLastPing = datetime.datetime.now()
-            self.save()
         except Exception, e:
             print e
             raise BadRequest

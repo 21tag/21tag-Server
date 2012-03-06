@@ -34,7 +34,7 @@ class VenueResource(ModelResource):
             #print "TEAM: " + str(venue.tag_owner.pk) + " VENUE " + str(venue.pk)
             owner['points'] = TeamScore.objects.get(team=venue.tag_owner, venue=venue).score
         except Exception, e:
-            print "**** VENUE DEHYDRATE ERR " + str(e)
+            #print "**** VENUE DEHYDRATE ERR " + str(e)
             owner['id'] = ""
             owner['name'] = ""
             owner['points'] = ""
@@ -72,7 +72,7 @@ class TeamResource(ModelResource):
         #authentication = Authentication()
         authorization = Authorization()
     def hydrate(self, bundle):
-        print "*** TEAM HYDRATE: " + str(bundle.data)
+        #print "*** TEAM HYDRATE: " + str(bundle.data)
         if 'user_id' in bundle.data:
             user_id = bundle.data['user_id']
             bundle.data.pop('user_id')
@@ -134,7 +134,7 @@ class TeamResource(ModelResource):
                 teamScores[str(s.venue.pk)] += s.score
             else:
                 teamScores[str(s.venue.pk)] = s.score
-        print teamScores
+        #print teamScores
         for poi in teamScores:
             score = {}
             score['poi'] = int(poi)
@@ -259,11 +259,11 @@ class UserResource(ModelResource):
                 if e.team !=  None:
                     event['team_id'] = e.team.pk
                 else:
-                    event['team_id'] = None
+                    event['team_id'] = ""
                 if e.venue != None:
                     event['poi_id'] = e.venue.pk
                 else:
-                    event['poi_id'] = None
+                    event['poi_id'] = ""
                 event['message'] = e.message
                 event['time'] = e.time.strftime('%Y-%m-%d %H:%M:%S -0600')
                 event['points'] = e.points

@@ -4,11 +4,10 @@ from django.template import RequestContext
 from django.http import HttpResponse
 import json
 from django.contrib.auth.models import User
-from models import Team, Venue, UserScore
+from models import Team, Venue, UserScore, UserProfile, Event
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 import facebook
-from models import UserProfile
 from geopy.distance import distance
 
 @csrf_exempt
@@ -17,9 +16,9 @@ def userfromfid(request):
         return HttpResponse("nope")
     response = {}
     try:
-        response['user_id'] = UserProfile.objects.get(fid=request.GET.get("fid")).user.pk
+        response['id'] = UserProfile.objects.get(fid=request.GET.get("fid")).user.pk
     except:
-        response['user_id'] = None
+        response['id'] = None
     return HttpResponse(json.dumps(response), mimetype="application/json")
 
 @login_required
@@ -317,7 +316,24 @@ def getpoisdetails(request):
         for poi in venues:
             poiloc = (poi.geolat, poi.geolong)
             if distance(userloc, poiloc) < 400:
-                thispoi  = {}
+                events = []
+                try:
+                    events = Event.objects.get(venue=poi)
+                    for e in events:
+                        event = {}
+                        event["message"] = e.message
+                        event["points"] = e.points
+                        if e.team != None:
+                            event["team_id"] = e.team.pk
+                        else:
+                            event["team_id"] = ""
+                        event["time"] = e.time
+                        event["user_id"] = e.user.pk
+                        events.append(event)
+                except:
+                    pass
+                thispoi = {}
+                thispoi["events"] = events
                 thispoi["id"] = poi.id
                 thispoi["name"] = poi.name
                 thispoi["zip"] = poi.zip
@@ -329,13 +345,30 @@ def getpoisdetails(request):
                 thispoi["city"] = poi.city
                 thispoi["state"] = poi.state
                 #Make sure to enforce no conflicts in team venue ownership
-                thispoi["tag_owner"] = poi.team_set.all()[0].name
+                tag_owner = {}
+                try:
+                    tag_owner["id"] = poi.tag_owner.pk
+                    tag_owner["name"] = poi.tag_owner.name
+                    tag_owner["points"] = poi.tag_owner.points
+                except:
+                    tag_owner["id"] = ""
+                    tag_owner["name"] = ""
+                    tag_owner["points"] = ""
+                thispoi["tag_owner"] = tag_owner
                 pois.append(thispoi)
     except Exception, e:
         print e
         return HttpResponse("invalid request")
+    container = {}
+    meta = {}
+    meta['total_count']=len(pois)
+    meta['previous'] = ""
+    meta['next'] = ""
+    container["meta"] = meta
+    container["objects"] = pois
+    
     print pois
-    return HttpResponse(json.dumps(pois), mimetype="application/json")
+    return HttpResponse(json.dumps(container), mimetype="application/json")
 
 @csrf_exempt
 def deletefromteam(request):
