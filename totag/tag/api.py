@@ -176,8 +176,10 @@ class UserResource(ModelResource):
         if 'poi' in bundle.data:
             poi = bundle.data['poi']
             bundle.data.pop('poi')
-            print bundle.data
-            profile = UserProfile.objects.get(pk=bundle.obj.pk)
+            print "Checkin call @ "+str(poi)+" data:" + str(bundle.data)
+            profile = User.objects.get(pk=bundle.data['id']).get_profile()
+            print "profile got"
+            #using pk=bundle.obj.pk returned NoneType
             profile.checkin(poi)
         #team change call
         if 'new_team_id' in bundle.data:
@@ -220,7 +222,8 @@ class UserResource(ModelResource):
 
     # Prepare model data for client consumption
     def dehydrate(self, bundle):
-        profile = User.objects.get(pk=bundle.obj.pk).get_profile()
+        user = User.objects.get(pk=bundle.obj.pk)
+        profile = user.get_profile()
         try:  # if user has no team, all data null. User can have team, but not yet checked in. NoneType.pk throws error
             bundle.data['team_id'] = profile.team.pk
             bundle.data['teamname'] = profile.team.name
@@ -248,12 +251,19 @@ class UserResource(ModelResource):
 
         # Get Events
         try:
-            events = Event.objects.filter(user=bundle.obj).order_by('-time')[:NUM_EVENTS]
+            events = Event.objects.filter(user=user).order_by('-time')[:NUM_EVENTS]
+            #print events
             eventList = []
             for e in events:
                 event = {}
-                event['team_id'] = e.team.pk
-                event['poi_id'] = e.venue.pk
+                if e.team !=  None:
+                    event['team_id'] = e.team.pk
+                else:
+                    event['team_id'] = None
+                if e.venue != None:
+                    event['poi_id'] = e.venue.pk
+                else:
+                    event['poi_id'] = None
                 event['message'] = e.message
                 event['time'] = e.time.strftime('%Y-%m-%d %H:%M:%S -0600')
                 event['points'] = e.points

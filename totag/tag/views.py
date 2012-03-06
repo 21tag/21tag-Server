@@ -11,6 +11,16 @@ import facebook
 from models import UserProfile
 from geopy.distance import distance
 
+@csrf_exempt
+def userfromfid(request):
+    if not request.method == "GET":
+        return HttpResponse("nope")
+    response = {}
+    try:
+        response['user_id'] = UserProfile.objects.get(fid=request.GET.get("fid")).user.pk
+    except:
+        response['user_id'] = None
+    return HttpResponse(json.dumps(response), mimetype="application/json")
 
 @login_required
 @csrf_exempt

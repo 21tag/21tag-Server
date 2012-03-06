@@ -5,8 +5,8 @@ import datetime
 
 from tastypie.exceptions import BadRequest
 
-CHECKIN_MAX = 65  # seconds without checkin until "checked out"
-CHECKIN_MIN = 30  # fundamental time b/t checkins to award 1 pt
+CHECKIN_MAX = 60 * 6  # seconds without checkin until "checked out"
+CHECKIN_MIN = 60 * 5  # fundamental time b/t checkins to award 1 pt
 
 class Campus(models.Model):
     name = models.CharField(max_length=255)
@@ -125,12 +125,14 @@ class UserProfile(models.Model):
 
     def checkin(self, poi):
         #If first checkin, self.CurrentVenue will be null
-
         try:
             print "checkin"
             checkin = Venue.objects.get(pk=poi)
             #If first checkin or expired time
-            if self.currentVenue.pk != checkin.pk or self.currentVenue == None or (datetime.datetime.now() - self.currentVenueLastPing > datetime.timedelta(seconds=CHECKIN_MAX)):
+            justDoIt = False
+            if self.currentVenue == None:
+                justDoIt = True
+            if justDoIt or self.currentVenue.pk != checkin.pk or self.currentVenue == None or (datetime.datetime.now() - self.currentVenueLastPing > datetime.timedelta(seconds=CHECKIN_MAX)):
                 print "first checkin"
                 self.currentVenue = Venue.objects.get(pk=poi)
                 self.currentVenueLastPing = datetime.datetime.now()

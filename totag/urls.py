@@ -15,6 +15,7 @@ urlpatterns = patterns('',
     # url(r'^$', 'totag.views.home', name='home'),
 #    url(r'^api/', include(api_1.urls)),
     #API V2 endpoints
+    url(r'^api/v2/userfromfid/', 'tag.views.userfromfid'),
     url(r'^api/v2/getteamsbyfbids/', 'tag.views.getteamsbyfbids'),
     url(r'^api/v2/getpoisdetails/', 'tag.views.getpoisdetails'),
     url(r'^api/', include(api_v1.urls)),
