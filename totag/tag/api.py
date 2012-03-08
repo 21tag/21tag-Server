@@ -225,8 +225,12 @@ class UserResource(ModelResource):
         user = User.objects.get(pk=bundle.obj.pk)
         profile = user.get_profile()
         try:  # if user has no team, all data null. User can have team, but not yet checked in. NoneType.pk throws error
-            bundle.data['team_id'] = profile.team.pk
-            bundle.data['teamname'] = profile.team.name
+            if profile.team != None:
+                bundle.data['team_id'] = profile.team.pk
+                bundle.data['teamname'] = profile.team.name
+            else:
+                bundle.data['team_id'] = ""
+                bundle.data['teamname'] = ""
             bundle.data['fid'] = profile.fid
             bundle.data['points'] = profile.points                                                # 2001-03-24 10:45:32 +0600
             if profile.currentVenue != None:
