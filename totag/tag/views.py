@@ -4,11 +4,41 @@ from django.template import RequestContext
 from django.http import HttpResponse
 import json
 from django.contrib.auth.models import User
-from models import Team, Venue, UserScore, UserProfile, Event
+from models import Team, Venue, UserScore, TeamScore, UserProfile, Event
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 import facebook
 from geopy.distance import distance
+from forms import UploadFileForm
+from django.core.files import File
+
+@csrf_exempt
+def uploadavatar(request):
+    print "upload file"
+    #print "upload file " + str(request.META.CONTENT_TYPE)
+    if request.method == 'POST':
+        if "team_id" in request.POST:
+            print "team id got: " + str(request.POST["team_id"])
+            try:
+                myteam = Team.objects.get(pk=request.POST["team_id"])
+            except:
+                return HttpResponse('invalid team')
+        form = UploadFileForm(request.POST, request.FILES)
+        if form.is_valid():
+            print "valid form"
+            myteam.avatar = request.FILES['image']
+            myteam.save()
+            return HttpResponse('cool')
+    else:
+        form = UploadFileForm()
+    return HttpResponse('nope')
+
+def handle_uploaded_file(f):
+    print "handle file"
+    #Team.avatar.save(f.path, f, True)
+    #for chunk in f.chunks():
+    #    destination.write(chunk)
+    #destination.close()
 
 @csrf_exempt
 def userfromfid(request):
@@ -45,10 +75,14 @@ def syncTeamPoints(request):
     teams = Team.objects.all()
     for team in teams:
         users = UserScore.objects.filter(team=team)
-        tally = 0
+        teams = TeamScore.objects.filter(team=team)
+        utally = 0
         for u in users:
-            tally += u.score
-        print str(team.name) + " " + str(tally)
+            utally += u.score
+        ttally = 0
+        for t in teams:
+            ttally += t.score
+        print str(team.name) + " u:" + str(utally) + " t:" + str(ttally)
     return HttpResponse("points synced")
 
 @csrf_exempt
@@ -256,7 +290,8 @@ def getteamsbyfbids(request):
                     fByTeam[team.id] += 1
                 teams.append(teamdic)
             except Exception, e:
-                print e
+                pass
+                #print e
     except Exception, e:
         print e
         return HttpResponse("nope")

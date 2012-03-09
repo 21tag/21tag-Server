@@ -73,8 +73,15 @@ class TeamResource(ModelResource):
         authorization = Authorization()
     def hydrate(self, bundle):
         #print "*** TEAM HYDRATE: " + str(bundle.data)
+
+        #if 'image' in bundle.data:
+        #    print "image found"
+        #    print bundle.data["image"]
+
+        #create team with user request
         if 'user_id' in bundle.data:
             user_id = bundle.data['user_id']
+            print "joining created team. user: " + str(user_id)
             bundle.data.pop('user_id')
             profile = User.objects.get(pk=user_id).get_profile()
             profile.team = Team.objects.get(pk=bundle.obj.pk)
@@ -125,20 +132,13 @@ class TeamResource(ModelResource):
         bundle.data['members'] = plist
 
         # Get Scores
-        scores = UserScore.objects.filter(team=bundle.obj)
+        teamScores = TeamScore.objects.filter(team=bundle.obj)
         scoreList = []
         #poiList = scores.filter(poi)
-        teamScores = {}
-        for s in scores:
-            if s.venue.pk in teamScores:
-                teamScores[str(s.venue.pk)] += s.score
-            else:
-                teamScores[str(s.venue.pk)] = s.score
-        #print teamScores
         for poi in teamScores:
             score = {}
-            score['poi'] = int(poi)
-            score['pts'] = teamScores[poi]
+            score['poi'] = poi.venue.pk
+            score['pts'] = int(poi.score)
             scoreList.append(score)
         bundle.data['poi_pts'] = scoreList
 
@@ -175,27 +175,36 @@ class UserResource(ModelResource):
         #checkin call
         if 'poi' in bundle.data:
             poi = bundle.data['poi']
+            points = bundle.data['points']
+            bundle.data.pop('points')
             bundle.data.pop('poi')
-            print "Checkin call @ "+str(poi)+" data:" + str(bundle.data)
+            #print "Checkin call @ "+str(poi)+" data:" + str(bundle.data)
             profile = User.objects.get(pk=bundle.data['id']).get_profile()
-            print "profile got"
+            #print "profile got"
             #using pk=bundle.obj.pk returned NoneType
-            profile.checkin(poi)
+            profile.checkin(poi, points)
         #team change call
         if 'new_team_id' in bundle.data:
             print "team change request"
             team_id = bundle.data['new_team_id']
             print team_id
-            bundle.data.pop('team_id')
+            bundle.data.pop('new_team_id')
             profile = UserProfile.objects.get(pk=bundle.obj.pk)
             oldTeam = profile.team
             #leave team request
             if int(team_id) == 0:
-                team = None
+                newTeam = None
             else:
-                team = Team.objects.get(pk=team_id)
+                newTeam = Team.objects.get(pk=team_id)
             if oldTeam != None:
                 #delete old team points
+                userscores = UserScore.objects.filter(team=profile.team, user=bundle.obj)
+                # deduct to-be-deleted userscore values from team scores
+                for us in userscores:
+                    ts = TeamScore.objects.get(team=us.team, venue=us.venue)
+                    ts.score -= us.score
+                    ts.save()
+
                 UserScore.objects.filter(team=profile.team, user=bundle.obj).delete()
                 oldpoints = profile.points
                 profile.points = 0
@@ -205,7 +214,7 @@ class UserResource(ModelResource):
                 Event.objects.create(venue=None, user=bundle.obj, team=profile.team, points=-oldpoints, message=message)
             #set new team
             try:
-                profile.team = team
+                profile.team = newTeam
             except Exception, e:
                 print e
             profile.save()

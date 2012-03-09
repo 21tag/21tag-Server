@@ -18,6 +18,7 @@ urlpatterns = patterns('',
     url(r'^api/v2/userfromfid/', 'tag.views.userfromfid'),
     url(r'^api/v2/getteamsbyfbids/', 'tag.views.getteamsbyfbids'),
     url(r'^api/v2/getpoisdetails/', 'tag.views.getpoisdetails'),
+    url(r'^api/v2/uploadavatar/', 'tag.views.uploadavatar'),
     url(r'^api/', include(api_v1.urls)),
 
     #FB auth test methods

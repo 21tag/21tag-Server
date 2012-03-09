@@ -6,8 +6,9 @@ import datetime
 from tastypie.exceptions import BadRequest
 
 CHECKIN_MAX = 60 * 6  # seconds without checkin until "checked out"
-CHECKIN_MIN = 60 * 4  # fundamental time b/t checkins to award 1 pt
+CHECKIN_MIN = 30  # fundamental time b/t checkins to award 1 pt
 CHECKIN_PTS = 5  # pts per checkin
+
 
 class Campus(models.Model):
     name = models.CharField(max_length=255)
@@ -58,7 +59,7 @@ class Team(models.Model):
     #Integrate Campus functionality 
     campus = models.ForeignKey(Campus, blank=True, null=True)
     motto = models.CharField(max_length=255)
-    #avatar = models.FileField()
+    avatar = models.ImageField(upload_to="team_avatars/", blank=True, null=True)
     leader = models.ForeignKey(User, blank=True, null=True)
     venues = models.ManyToManyField(Venue, blank=True, null=True)
     points = models.IntegerField(default=0)
@@ -124,15 +125,11 @@ class UserProfile(models.Model):
         self.fb_authcode = authcode
         self.save()
 
-    def checkin(self, poi):
+    def checkin(self, poi, points):
         #If first checkin, self.CurrentVenue will be null
         try:
-            print "checkin"
             checkin = Venue.objects.get(pk=poi)
             #If first checkin or expired time
-            justDoIt = False
-            if self.currentVenue == None:
-                justDoIt = True
             #if justDoIt or self.currentVenue.pk != checkin.pk or self.currentVenue == None or (datetime.datetime.now() - self.currentVenueLastPing > datetime.timedelta(seconds=CHECKIN_MAX)):
             #    print "first checkin"
             #    self.currentVenue = Venue.objects.get(pk=poi)
@@ -141,23 +138,32 @@ class UserProfile(models.Model):
             #    message = str(self.user.first_name) + " " + str(self.user.last_name) + " checked in at " + str(self.currentVenue.name)
             #    Event.objects.create(venue=self.currentVenue, team=self.team, user=self.user, message=message)
             #else:
-            elapsedTime = datetime.datetime.now() - self.currentVenueLastPing
-            print str(elapsedTime) + " since last checkin at this poi"
+            if self.currentVenueLastPing == None:
+                elapsedTime = datetime.timedelta(seconds=CHECKIN_MIN)
+                print "first checkin"
+            else:
+                elapsedTime = datetime.datetime.now() - self.currentVenueLastPing
+                print str(elapsedTime) + " since last checkin"
+
             #If it's been between 55 and 65 s since last checkin, points
             #if elapsedTime > datetime.timedelta(seconds=55) and elapsedTime < datetime.timedelta(seconds=65):
             #if elapsedTime > datetime.timedelta(seconds=CHECKIN_MIN) and elapsedTime < datetime.timedelta(seconds=CHECKIN_MAX):
 
             #New behavior: A checkin represents 5m of checked in time
-            if elapsedTime > datetime.timedelta(seconds=CHECKIN_MIN):
+            if elapsedTime >= datetime.timedelta(seconds=CHECKIN_MIN):
+                self.currentVenue = Venue.objects.get(pk=poi)
                 self.currentVenueLastPing = datetime.datetime.now()
-                print "points awarded"
+                print str(points) + " points awarded"
                 oldOwner = checkin.getOwner()
 
-                self.points += CHECKIN_PTS
-                self.team.points += CHECKIN_PTS
+                self.points += points
+                self.team.points += points
                 userscore, created = UserScore.objects.get_or_create(venue=checkin, team=self.team, user=self.user)
-                userscore.addScore(CHECKIN_PTS)  # auto adds teamScore
+                userscore.addScore(points)  # auto adds teamScore
                 userscore.save()
+
+                message = str(self.user.first_name) + " " + str(self.user.last_name) + " checked in at " + str(self.currentVenue.name)
+                Event.objects.create(points=points, venue=self.currentVenue, team=self.team, user=self.user, message=message)
                 #TODO: remove team score, have team dehydrate method tally score by venuescore objs
                 #Look into collision issues here
                 #I think there's a more proper way to increment variables
@@ -167,7 +173,7 @@ class UserProfile(models.Model):
                 if oldOwner != newOwner:
                     print "team takeover!"
                     message = str(self.team.name) + " took over " + str(checkin.name) + "!"
-                    Event.objects.create(venue=checkin, team=self.team, user=self.user, message=message)
+                    Event.objects.create(points=0, venue=checkin, team=self.team, user=self.user, message=message)
                 print "top team: " + str(newOwner) + "my team: " + str(self.team)
                 if newOwner == self.team:
                     #top = self.venuescore_set.all().order_by('-score')[0]
@@ -183,6 +189,8 @@ class UserProfile(models.Model):
                     self.team.venues.add(checkin)
 
                 self.save()
+            else:
+                print "checkin time req not met"
         except Exception, e:
             print e
             raise BadRequest
@@ -209,7 +217,7 @@ class Event(models.Model):
     user = models.ForeignKey(User)
     team = models.ForeignKey(Team)
     message = models.CharField(max_length=255)
-    points = models.IntegerField(default=1)
+    points = models.IntegerField(default=0)
     time = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
