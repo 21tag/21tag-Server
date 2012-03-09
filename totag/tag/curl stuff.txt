@@ -3,9 +3,13 @@ create user
 
  curl --dump-header - -H "Content-Type: application/json" -X POST --data '{"firstname":"harold", "lastname":"posted", "fbauthcode":"2390dfsjlksdf", "email":"d@b.com", "fid":2390}' http://localhost:8888/api/v2/user/
 
+ create team:
+
+  curl --dump-header - -H "Content-Type: application/json" -X POST --data '{"name":"e-a-g-l-e-s-EAGLES", "motto":"fly about", "user_id":2}' http://21tag.com:8420/api/v2/team/
+
 checkin:
 
- curl --dump-header - -H "Content-Type: application/json" -X PATCH --data '{"poi":2}' http://localhost:8888/api/v2/user/4/
+ curl --dump-header - -H "Content-Type: application/json" -X PATCH --data '{"poi":2}' http://zentogether.com:8420/api/v2/user/4/
 
 leave team:
 

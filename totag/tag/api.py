@@ -78,6 +78,10 @@ class TeamResource(ModelResource):
         #    print "image found"
         #    print bundle.data["image"]
 
+        return bundle
+
+    def dehydrate(self, bundle):
+
         #create team with user request
         if 'user_id' in bundle.data:
             user_id = bundle.data['user_id']
@@ -86,9 +90,7 @@ class TeamResource(ModelResource):
             profile = User.objects.get(pk=user_id).get_profile()
             profile.team = Team.objects.get(pk=bundle.obj.pk)
             profile.save()
-        return bundle
 
-    def dehydrate(self, bundle):
         #Remove venue.tag_owner when venue displayed as belonging to a team
         venues = bundle.data['venues']
         for index, venue in enumerate(bundle.data['venues']):

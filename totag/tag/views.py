@@ -33,13 +33,6 @@ def uploadavatar(request):
         form = UploadFileForm()
     return HttpResponse('nope')
 
-def handle_uploaded_file(f):
-    print "handle file"
-    #Team.avatar.save(f.path, f, True)
-    #for chunk in f.chunks():
-    #    destination.write(chunk)
-    #destination.close()
-
 @csrf_exempt
 def userfromfid(request):
     if not request.method == "GET":
