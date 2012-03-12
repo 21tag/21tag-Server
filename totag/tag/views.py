@@ -11,7 +11,10 @@ import facebook
 from geopy.distance import distance
 from forms import UploadFileForm
 from django.core.files import File
+import datetime
 
+def time(request):
+    return HttpResponse(datetime.datetime.now())
 @csrf_exempt
 def uploadavatar(request):
     print "upload file"

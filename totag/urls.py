@@ -20,6 +20,7 @@ urlpatterns = patterns('',
     url(r'^api/v2/getpoisdetails/', 'tag.views.getpoisdetails'),
     url(r'^api/v2/uploadavatar/', 'tag.views.uploadavatar'),
     url(r'^api/', include(api_v1.urls)),
+    url(r'^time/', 'tag.views.time'),
 
     #FB auth test methods
     url(r'^fbtest/', 'tag.views.fbtest'),

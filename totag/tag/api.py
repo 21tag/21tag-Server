@@ -82,6 +82,10 @@ class TeamResource(ModelResource):
 
     def dehydrate(self, bundle):
 
+        #report null as empty string per 21tag convention
+        if bundle.data['avatar'] == None:
+            bundle.data['avatar'] = ""
+
         #create team with user request
         if 'user_id' in bundle.data:
             user_id = bundle.data['user_id']
@@ -210,7 +214,8 @@ class UserResource(ModelResource):
                 UserScore.objects.filter(team=profile.team, user=bundle.obj).delete()
                 oldpoints = profile.points
                 profile.points = 0
-                profile.team.points = profile.team.points - oldpoints
+                oldTeam.points = oldTeam.points - oldpoints
+                oldTeam.save()
                 #Generate event if user left a previously non-null team
                 message = str(bundle.obj.first_name) + " " + str(bundle.obj.last_name) + " left team " + str(profile.team.name)
                 Event.objects.create(venue=None, user=bundle.obj, team=profile.team, points=-oldpoints, message=message)
