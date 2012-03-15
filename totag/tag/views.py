@@ -14,7 +14,7 @@ from django.core.files import File
 import datetime
 
 def time(request):
-    return HttpResponse(datetime.datetime.now())
+    return HttpResponse(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S %Z'))
 @csrf_exempt
 def uploadavatar(request):
     print "upload file"
@@ -338,11 +338,6 @@ def getpoisdetails(request):
         print request.GET["lon"]
         venues = Venue.objects.all()
         userloc = (request.GET["lat"], request.GET["lon"])
-        try:
-            if len(venues) > request.GET["num"]:
-                venues = venues[:request.GET["num"]]
-        except:
-            pass
         pois = []
         for poi in venues:
             poiloc = (poi.geolat, poi.geolong)
@@ -389,6 +384,8 @@ def getpoisdetails(request):
                     tag_owner["points"] = ""
                 thispoi["tag_owner"] = tag_owner
                 pois.append(thispoi)
+        num = int(request.GET["num"])
+        pois = pois[:num]
     except Exception, e:
         print e
         return HttpResponse("invalid request")
