@@ -339,7 +339,12 @@ def createteam(request):
 # Hey Chris!
 # Check this ouuuuut!
 
+# Distance cutoff between targer lat/lon and venue lat/lon
+# Check units with geopy docs
 THRESHOLD_DISTANCE = 200
+
+# Number of venues to return
+RESPONSE_LENGTH = 30
 
 @csrf_exempt
 def getpoisdetails(request):
@@ -409,9 +414,12 @@ def getpoisdetails(request):
                     tag_owner["points"] = ""
                 thispoi["tag_owner"] = tag_owner
                 pois.append(thispoi)
-        num = int(request.GET["num"])
-        #Temporarily bump this number up
-        pois = pois[:30]
+        # The iOS client requets 10 responses, I believe
+        # But we're not using this input for now
+        # RESPONSE_LENGTH = int(request.GET["num"])
+
+        # Perform a sort or something sweet before
+        pois = pois[:RESPONSE_LENGTH]
     except Exception, e:
         print e
         return HttpResponse("invalid request")
