@@ -108,7 +108,7 @@ class UserProfile(models.Model):
     campus = models.ForeignKey(Campus, blank=True, null=True)
     gender = models.CharField(blank=True, max_length=1)  # m /f
     phone = models.IntegerField(blank=True, max_length=11, null=True)
-    fid = models.IntegerField(blank=True, max_length=255, null=True)
+    fid = models.BigIntegerField(blank=True, max_length=255, null=True)
     fb_authcode = models.CharField(blank=True, max_length=255)
     team = models.ForeignKey(Team, blank=True, null=True)
     points = models.IntegerField(default=0, blank=True, null=True)
@@ -151,6 +151,11 @@ class UserProfile(models.Model):
 
             #New behavior: A checkin represents 5m of checked in time
             if elapsedTime >= datetime.timedelta(seconds=CHECKIN_MIN):
+
+                if self.currentVenue.pk != checkin.pk:
+                    message = str(self.user.first_name) + " " + str(self.user.last_name) + " checked in at " + str(self.currentVenue.name)
+                    Event.objects.create(points=points, venue=self.currentVenue, team=self.team, user=self.user, message=message)
+
                 self.currentVenue = Venue.objects.get(pk=poi)
                 self.currentVenueLastPing = datetime.datetime.now()
                 print str(points) + " points awarded"
@@ -162,8 +167,6 @@ class UserProfile(models.Model):
                 userscore.addScore(points)  # auto adds teamScore
                 userscore.save()
 
-                message = str(self.user.first_name) + " " + str(self.user.last_name) + " checked in at " + str(self.currentVenue.name)
-                Event.objects.create(points=points, venue=self.currentVenue, team=self.team, user=self.user, message=message)
                 #TODO: remove team score, have team dehydrate method tally score by venuescore objs
                 #Look into collision issues here
                 #I think there's a more proper way to increment variables

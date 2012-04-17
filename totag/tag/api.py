@@ -11,11 +11,14 @@ from tastypie.exceptions import BadRequest
 from django.db import IntegrityError
 from django.conf.urls.defaults import url
 from datetime import datetime
+import pytz
 
 NUM_EVENTS = 10
 HQ_VENUE_PK = 3
 #Use this as the venue for Events without proper venue
 #Such as team switching
+
+tz = pytz.timezone('America/Chicago')
 
 class VenueResource(ModelResource):
     #tag_owner = fields.ForeignKey(TeamResource, 'tag_owner', related_name="venue", full=True)
@@ -49,7 +52,7 @@ class VenueResource(ModelResource):
                 event['user_id'] = e.user.pk
                 event['team_id'] = e.team.pk
                 event['message'] = e.message
-                event['time'] = e.time.strftime('%Y-%m-%d %H:%M:%S -0600')
+                event['time'] = tz.localize(e.time).strftime('%Y-%m-%d %H:%M:%S %z')
                 event['points'] = e.points
                 eventList.append(event)
             bundle.data['events'] = eventList
@@ -116,7 +119,7 @@ class TeamResource(ModelResource):
                 p_res['teamname'] = p.team.name
                 p_res['fid'] = p.fid
                 if p.currentVenue != None:
-                    p_res['currentVenueLastTime'] = p.currentVenueLastPing.strftime('%Y-%m-%d %H:%M:%S -0600')
+                    p_res['currentVenueLastTime'] = tz.localize(p.currentVenueLastPing).strftime('%Y-%m-%d %H:%M:%S %z')
                     p_res['currentVenueName'] = p.currentVenue.name
                     p_res['currentVenueId'] = p.currentVenue.pk
                 else:
@@ -250,7 +253,7 @@ class UserResource(ModelResource):
             bundle.data['fid'] = profile.fid
             bundle.data['points'] = profile.points                                                # 2001-03-24 10:45:32 +0600
             if profile.currentVenue != None:
-                bundle.data['currentVenueLastTime'] = profile.currentVenueLastPing.strftime('%Y-%m-%d %H:%M:%S -0600')
+                bundle.data['currentVenueLastTime'] = tz.localize(profile.currentVenueLastPing).strftime('%Y-%m-%d %H:%M:%S -0600')
                 bundle.data['currentVenueName'] = profile.currentVenue.name
                 bundle.data['currentVenueId'] = profile.currentVenue.pk
             else:
@@ -285,7 +288,7 @@ class UserResource(ModelResource):
                 else:
                     event['poi_id'] = ""
                 event['message'] = e.message
-                event['time'] = e.time.strftime('%Y-%m-%d %H:%M:%S -0600')
+                event['time'] = tz.localize(e.time).strftime('%Y-%m-%d %H:%M:%S %z')
                 event['points'] = e.points
                 eventList.append(event)
             bundle.data['events'] = eventList
@@ -322,7 +325,8 @@ class UserResource(ModelResource):
             bundle.obj.first_name = fname
             bundle.obj.last_name = lname
             bundle.obj.save()
-            profile = UserProfile.objects.get(pk=bundle.obj.pk)  # check that user and profile pks are safe to assume equal
+            #profile, created = UserProfile.objects.get_or_create(pk=bundle.obj.pk)  # check that user and profile pks are safe to assume equal
+            profile = bundle.obj.get_profile()
             profile.fb_authcode = password
             profile.fid = username
             profile.save()

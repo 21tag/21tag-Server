@@ -10,14 +10,18 @@ from django.contrib.auth.decorators import login_required
 import facebook
 from geopy.distance import distance
 from forms import UploadFileForm
-from django.core.files import File
 import datetime
+import pytz
+
+tz = pytz.timezone('America/Chicago')
 
 def time(request):
-    return HttpResponse(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S %Z'))
+    t = datetime.datetime.now()
+    return HttpResponse(tz.localize(t).strftime('%Y-%m-%d %H:%M:%S %z'))
+
 @csrf_exempt
 def uploadavatar(request):
-    print "upload file"
+    print "upload avatar request"
     #print "upload file " + str(request.META.CONTENT_TYPE)
     if request.method == 'POST':
         if "team_id" in request.POST:
@@ -32,9 +36,12 @@ def uploadavatar(request):
             myteam.avatar = request.FILES['image']
             myteam.save()
             return HttpResponse('cool')
+        else:
+            return HttpResponse('POST form validation failed. ' + str(form.errors))
     else:
+        print request.method
         form = UploadFileForm()
-    return HttpResponse('nope')
+    return HttpResponse('invalid request type')
 
 @csrf_exempt
 def userfromfid(request):
@@ -43,7 +50,8 @@ def userfromfid(request):
     response = {}
     try:
         response['id'] = UserProfile.objects.get(fid=request.GET.get("fid")).user.pk
-    except:
+    except Exception, e:
+        print "id from fid error: "+ str(e)
         response['id'] = None
     return HttpResponse(json.dumps(response), mimetype="application/json")
 
@@ -328,23 +336,40 @@ def createteam(request):
 
     return HttpResponse("nope")
 
-#TODO test!
+# Hey Chris!
+# Check this ouuuuut!
+
+THRESHOLD_DISTANCE = 200
+
 @csrf_exempt
 def getpoisdetails(request):
+
     if request.method == "POST":
         return HttpResponse("nope")
     try:
-        print request.GET["lat"]
-        print request.GET["lon"]
+        #print request.GET["lat"]
+        #print request.GET["lon"]
         venues = Venue.objects.all()
+
+        # Target coordinates
         userloc = (request.GET["lat"], request.GET["lon"])
+
+        # Array of venues (dictionaries) within distance
         pois = []
+
         for poi in venues:
+
+            # Venue coordinates
             poiloc = (poi.geolat, poi.geolong)
-            if distance(userloc, poiloc) < 400:
+
+            # Calculate distance between target and venue
+            # See http://code.google.com/p/geopy/wiki/GettingStarted#Calculating_distances
+            # Check the units of distance(), that could be the problem :)
+            if distance(userloc, poiloc) < THRESHOLD_DISTANCE:
+
+                # Prepare JSON Venue response for this venue
                 eventList = []
                 try:
-                    #print poi
                     events = Event.objects.filter(venue=poi).order_by('-time')[:10]
                     for e in events:
                         event = {}
@@ -354,7 +379,7 @@ def getpoisdetails(request):
                             event["team_id"] = e.team.pk
                         else:
                             event["team_id"] = ""
-                        event["time"] = e.time.strftime('%Y-%m-%d %H:%M:%S -0600')
+                        event["time"] = tz.localize(e.time).strftime('%Y-%m-%d %H:%M:%S %z')
                         event["user_id"] = e.user.pk
                         eventList.append(event)
                 except Exception, e:
@@ -385,7 +410,8 @@ def getpoisdetails(request):
                 thispoi["tag_owner"] = tag_owner
                 pois.append(thispoi)
         num = int(request.GET["num"])
-        pois = pois[:num]
+        #Temporarily bump this number up
+        pois = pois[:30]
     except Exception, e:
         print e
         return HttpResponse("invalid request")
@@ -398,6 +424,11 @@ def getpoisdetails(request):
     container["objects"] = pois
     #print pois
     return HttpResponse(json.dumps(container), mimetype="application/json")
+
+    # Thoughts:
+    # Check the return type of geopy's distance()
+    # Add the distance b/t target and venue to
+    # thispoi{} dic and sort pois[] by pois[thispoi[distance]]
 
 @csrf_exempt
 def deletefromteam(request):
