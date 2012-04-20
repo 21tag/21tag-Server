@@ -36,7 +36,7 @@ class Venue(models.Model):
         return u"%s %s" % (self.pk, self.name)
 
 
-    #returns pk of team on top
+    #returns pk of team on top and changes self.tag_owner if needed
     def getOwner(self):
         #TODO: address ties
         try:
@@ -44,7 +44,11 @@ class Venue(models.Model):
             print "get Owner top for " + str(self.pk) + " :" + str(top)
             #Set Venue tag owner if ownership change occured
             if top.team != self.tag_owner:
+                # Remove venue from previous Team's venue list
+                self.tag_owner.venues.remove(self)
+                # Set this venue's owner to new Team
                 self.tag_owner = top.team
+                # Add this venue to the new Team's venue list
                 top.team.venues.add(self)
                 self.save()
         except Exception, e:
@@ -183,9 +187,10 @@ class UserProfile(models.Model):
                     try:
                         teams = checkin.team_set.all()
                         print "Teams with venue: " + str(teams)
+                        #  This should be handled by getOwner(), but in case latent bad data exists:
                         for t in teams:
                             t.venues.remove(checkin)
-                            t.save()
+                        t.save()  # Don't think this is actually needed after remove
                     except Exception, e:
                         print 'team owner removal error: ' + str(e)
 
