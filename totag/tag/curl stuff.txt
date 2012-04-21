@@ -17,4 +17,4 @@ curl --dump-header - -H "Content-Type: application/json" -X PATCH --data '{"new_
 
 reset fbauthcode:
 
-curl --dump-header - -H "Content-Type: application/json" -X PATCH --data '{"fbauthcode":"BAACi2IzLl5ABALp1j4H1X6H8sFhvAL7DVD04mZCyCMt9EO5T8OULqp4QaarqQiOkWoJfWqzpElOjHEoR4sbww5G0ZChZCXKp2W5kzkb6sZAnSo499tW2c3uho5ZAZAGPwZAOxJaMIbiwwZDZD"}' http://21tag.com:8420/api/v2/user/23/
+curl --dump-header - -H "Content-Type: application/json" -X PATCH --data '{"fbauthcode":"BAACi2IzLl5ABALp1j4H1X6H8sFhvAL7DVD04mZCyCMt9EO5T8OULqp4QaarqQiOkWoJfWqzpElOjHEoR4sbww5G0ZChZCXKp2W5kzkb6sZAnSo499tW2c3uho5ZAZAGPwZAOxJaMIbiwwZDZD"}' http://21tag.com:8420/api/v2/user/30/
