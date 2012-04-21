@@ -198,7 +198,7 @@ class UserResource(ModelResource):
             team_id = bundle.data['new_team_id']
             print team_id
             bundle.data.pop('new_team_id')
-            profile = UserProfile.objects.get(pk=bundle.obj.pk)
+            profile = UserProfile.objects.get(user=bundle.obj)
             oldTeam = profile.team
             #leave team request
             if int(team_id) == 0:
@@ -233,7 +233,7 @@ class UserResource(ModelResource):
         if 'fbauthcode' in bundle.data:
             fbauthcode = bundle.data['fbauthcode']
             bundle.data.pop('fbauthcode')
-            profile = UserProfile.objects.get(pk=bundle.obj.pk)
+            profile = UserProfile.objects.get(user=bundle.obj)
             profile.fbauthcode = fbauthcode
             profile.save()
 
