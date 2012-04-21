@@ -279,7 +279,7 @@ class UserResource(ModelResource):
             eventList = []
             for e in events:
                 event = {}
-                if e.team !=  None:
+                if e.team != None:
                     event['team_id'] = e.team.pk
                 else:
                     event['team_id'] = ""

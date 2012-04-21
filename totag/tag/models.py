@@ -42,15 +42,20 @@ class Venue(models.Model):
         try:
             top = self.teamscore_set.all().order_by('-score')[0]
             print "get Owner top for " + str(self.pk) + " :" + str(top)
-            #Set Venue tag owner if ownership change occured
-            if top.team != self.tag_owner:
+
+            # If Venue owner is null, set it to top team
+            if self.tag_owner == None:
+                self.tag_owner = top.team
+                self.save()
+            # Set Venue tag owner if ownership change occured
+            elif top.team != self.tag_owner:
                 # Remove venue from previous Team's venue list
                 self.tag_owner.venues.remove(self)
                 # Set this venue's owner to new Team
                 self.tag_owner = top.team
+                self.save()
                 # Add this venue to the new Team's venue list
                 top.team.venues.add(self)
-                self.save()
         except Exception, e:
             print "get owner error: " + str(e)
             #No owner yet
