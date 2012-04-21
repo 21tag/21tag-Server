@@ -75,15 +75,6 @@ class TeamResource(ModelResource):
         #authentication = Authentication()
         authorization = Authorization()
     def hydrate(self, bundle):
-
-         #create team with user request
-        if 'user_id' in bundle.data:
-            user_id = bundle.data['user_id']
-            print "joining created team. user: " + str(user_id)
-            bundle.data.pop('user_id')
-            profile = User.objects.get(pk=user_id).get_profile()
-            profile.team = Team.objects.get(pk=bundle.obj.pk)
-            profile.save()
         #print "*** TEAM HYDRATE: " + str(bundle.data)
 
         #if 'image' in bundle.data:
@@ -98,6 +89,18 @@ class TeamResource(ModelResource):
         if bundle.data['avatar'] == None:
             bundle.data['avatar'] = ""
 
+        # This is in dehydrate on purpose because
+        # After a POST is sent to team, the returned object
+        # will still have the user_id value
+        #create team with user request
+        if 'user_id' in bundle.data:
+            user_id = bundle.data['user_id']
+            print "joining created team. user: " + str(user_id)
+            bundle.data.pop('user_id')
+            profile = User.objects.get(pk=user_id).get_profile()
+            profile.team = Team.objects.get(pk=bundle.obj.pk)
+            profile.save()
+
         #Remove venue.tag_owner when venue displayed as belonging to a team
         venues = bundle.data['venues']
         for index, venue in enumerate(bundle.data['venues']):
@@ -109,7 +112,7 @@ class TeamResource(ModelResource):
         plist = []
         for p in players:
             p_res = {}
-            p_res['id'] = p.user.pk
+            p_res['id'] = p.pk
             p_res['points'] = p.points
             try:
                 user = User.objects.get(pk=p.pk)
