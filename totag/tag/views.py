@@ -341,10 +341,12 @@ def createteam(request):
 
 # Distance cutoff between targer lat/lon and venue lat/lon
 # Check units with geopy docs
-THRESHOLD_DISTANCE = 200
+THRESHOLD_DISTANCE = 0.25  # in miles
 
 # Number of venues to return
 RESPONSE_LENGTH = 30
+from operator import itemgetter
+
 
 @csrf_exempt
 def getpoisdetails(request):
@@ -366,11 +368,12 @@ def getpoisdetails(request):
 
             # Venue coordinates
             poiloc = (poi.geolat, poi.geolong)
+            distance_from_user = distance(userloc, poiloc).miles
 
             # Calculate distance between target and venue
             # See http://code.google.com/p/geopy/wiki/GettingStarted#Calculating_distances
             # Check the units of distance(), that could be the problem :)
-            if distance(userloc, poiloc) < THRESHOLD_DISTANCE:
+            if distance_from_user < THRESHOLD_DISTANCE:
 
                 # Prepare JSON Venue response for this venue
                 eventList = []
@@ -402,6 +405,7 @@ def getpoisdetails(request):
                 thispoi["crossstreet"] = poi.crossstreet
                 thispoi["city"] = poi.city
                 thispoi["state"] = poi.state
+                thispoi["distance"] = float(distance_from_user)
                 #Make sure to enforce no conflicts in team venue ownership
                 tag_owner = {}
                 try:
@@ -419,6 +423,7 @@ def getpoisdetails(request):
         # RESPONSE_LENGTH = int(request.GET["num"])
 
         # Perform a sort or something sweet before
+        pois = sorted(pois, key=itemgetter('distance'))
         pois = pois[:RESPONSE_LENGTH]
     except Exception, e:
         print e
