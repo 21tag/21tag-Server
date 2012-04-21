@@ -46,6 +46,8 @@ class Venue(models.Model):
             # If Venue owner is null, set it to top team
             if self.tag_owner == None:
                 self.tag_owner = top.team
+                # Set venue to be owned by top team
+                top.team.venues.add(self)
                 self.save()
             # Set Venue tag owner if ownership change occured
             elif top.team != self.tag_owner:
