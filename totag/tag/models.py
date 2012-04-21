@@ -130,7 +130,7 @@ class UserProfile(models.Model):
         self.save()
 
     def checkin(self, poi, points):
-        #If first checkin, self.CurrentVenue will be null
+
         try:
             checkin = Venue.objects.get(pk=poi)
             #If first checkin or expired time
@@ -142,9 +142,14 @@ class UserProfile(models.Model):
             #    message = str(self.user.first_name) + " " + str(self.user.last_name) + " checked in at " + str(self.currentVenue.name)
             #    Event.objects.create(venue=self.currentVenue, team=self.team, user=self.user, message=message)
             #else:
+
+            # If first checkin, self.CurrentVenue and currentVenueLastPing will be null
+            # First indicates this state
+            first = False
             if self.currentVenueLastPing == None:
                 elapsedTime = datetime.timedelta(seconds=CHECKIN_MIN)
                 print "first checkin"
+                first = True
             else:
                 elapsedTime = datetime.datetime.now() - self.currentVenueLastPing
                 print str(elapsedTime) + " since last checkin"
@@ -156,7 +161,10 @@ class UserProfile(models.Model):
             #New behavior: A checkin represents 5m of checked in time
             if elapsedTime >= datetime.timedelta(seconds=CHECKIN_MIN):
 
-                if self.currentVenue.pk != checkin.pk:
+                if first:
+                    message = str(self.user.first_name) + " " + str(self.user.last_name) + " checked in at " + str(checkin.name)
+                    Event.objects.create(points=points, venue=self.currentVenue, team=self.team, user=self.user, message=message)
+                elif self.currentVenue.pk != checkin.pk:
                     message = str(self.user.first_name) + " " + str(self.user.last_name) + " checked in at " + str(self.currentVenue.name)
                     Event.objects.create(points=points, venue=self.currentVenue, team=self.team, user=self.user, message=message)
 

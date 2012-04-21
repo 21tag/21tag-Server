@@ -10,7 +10,7 @@ admin.site.register(UserScore)
 admin.site.unregister(User)
 admin.site.register(Event)
 admin.site.register(TeamScore)
-admin.site.register(UserProfile) #For debugging these are deleted with users
+admin.site.register(UserProfile)  # For debugging these are deleted with users
 
 class UserProfileInline(admin.StackedInline):
     model = UserProfile
