@@ -112,10 +112,10 @@ class TeamResource(ModelResource):
         plist = []
         for p in players:
             p_res = {}
-            p_res['id'] = p.pk
+            p_res['id'] = p.user.pk
             p_res['points'] = p.points
             try:
-                user = User.objects.get(pk=p.pk)
+                user = User.objects.get(pk=p.user.pk)
                 p_res['first_name'] = user.first_name
                 p_res['last_name'] = user.last_name
                 p_res['team_id'] = p.team.pk
