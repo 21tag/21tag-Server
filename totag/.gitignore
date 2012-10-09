@@ -37,3 +37,7 @@ Thumbs.db
 # South Migrations #
 ####################
 /tag/migrations
+
+# Secrets #
+###########
+secrets.py

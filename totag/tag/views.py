@@ -12,6 +12,7 @@ from geopy.distance import distance
 from forms import UploadFileForm
 import datetime
 import pytz
+import secrets
 
 tz = pytz.timezone('America/Chicago')
 
@@ -194,7 +195,7 @@ def fbtest(request):
 #to replicate /adduser call
 @csrf_exempt
 def fblogin(request):
-    user = facebook.get_user_from_cookie(request.COOKIES, "252950804781745", "af1987209aa730c3607c8bffdc9d6ef7")
+    user = facebook.get_user_from_cookie(request.COOKIES, secrets.FACEBOOK_KEY, secrets.FACEBOOK_SECRET)
     if user:
         graph = facebook.GraphAPI(user["access_token"])
         profile = graph.get_object("me")
